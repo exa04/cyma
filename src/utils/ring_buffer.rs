@@ -9,6 +9,7 @@ use std::iter;
 /// # Example
 ///
 /// ```
+/// use plext::RingBuffer;
 /// let mut rb = RingBuffer::<f32>::new(2);
 /// rb.enqueue(1.0);
 /// rb.enqueue(2.0);
@@ -35,6 +36,7 @@ impl<T: Clone + Copy + Default + std::fmt::Debug> RingBuffer<T> {
     /// # Example
     ///
     /// ```
+    /// use plext::utils::RingBuffer;
     /// let mut rb = RingBuffer::<f32>::new(4);
     /// // [0.0, 0.0, 0.0, 0.0]
     /// ```
@@ -51,6 +53,7 @@ impl<T: Clone + Copy + Default + std::fmt::Debug> RingBuffer<T> {
     /// # Example
     ///
     /// ```
+    /// use plext::utils::RingBuffer;
     /// let mut rb = RingBuffer::<f32>::new(3);
     /// rb.enqueue(1.0);
     /// // [0.0, 0.0, 1.0]
@@ -72,6 +75,7 @@ impl<T: Clone + Copy + Default + std::fmt::Debug> RingBuffer<T> {
     /// # Example
     ///
     /// ```
+    /// use plext::utils::RingBuffer;
     /// let mut rb = RingBuffer::<f32>::new(2);
     /// rb.enqueue(1.0);
     /// rb.enqueue(2.0);
@@ -101,6 +105,7 @@ impl<T: Clone + Copy + Default + std::fmt::Debug> RingBuffer<T> {
     /// # Example
     ///
     /// ```
+    /// use plext::utils::RingBuffer;
     /// let mut rb = RingBuffer::<f32>::new(2);
     /// rb.enqueue(1.0);
     /// rb.enqueue(2.0);
