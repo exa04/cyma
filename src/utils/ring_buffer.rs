@@ -4,7 +4,7 @@ use std::iter;
 ///
 /// Allows you to store values in a circular structure where, in a
 /// First-In-First-Out-fashion, values can be appended without the need for
-/// resizing or any reallocations.
+/// resizing or any reallocation.
 ///
 /// # Example
 ///
@@ -22,7 +22,7 @@ use std::iter;
 /// rb.resize(2);
 /// // [0.0, 0.0]
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RingBuffer<T> {
     head: usize,
     size: usize,
@@ -146,5 +146,68 @@ impl<T: Clone + Copy + Default + std::fmt::Debug> RingBuffer<T> {
 
         self.data = new_data;
         self.size = size;
+    }
+}
+
+impl<T: Clone + Copy + Default + std::fmt::Debug> IntoIterator for RingBuffer<T> {
+    type Item = T;
+
+    type IntoIter = RingBufferIntoIterator<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RingBufferIntoIterator {
+            ring_buffer: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct RingBufferIntoIterator<T> {
+    ring_buffer: RingBuffer<T>,
+    index: usize,
+}
+
+impl<T: Clone + Copy + Default + std::fmt::Debug> Iterator for RingBufferIntoIterator<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> {
+        if self.index >= self.ring_buffer.size {
+            return None;
+        }
+        self.index += 1;
+        self.ring_buffer
+            .data
+            .get((self.index + self.ring_buffer.head - 1) % self.ring_buffer.size)
+            .copied()
+    }
+}
+
+impl<'a, T: Clone + Copy + Default + std::fmt::Debug> IntoIterator for &'a RingBuffer<T> {
+    type Item = &'a T;
+
+    type IntoIter = RingBufferRefIntoIterator<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        RingBufferRefIntoIterator {
+            ring_buffer: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct RingBufferRefIntoIterator<'a, T> {
+    ring_buffer: &'a RingBuffer<T>,
+    index: usize,
+}
+
+impl<'a, T> Iterator for RingBufferRefIntoIterator<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<&'a T> {
+        if self.index >= self.ring_buffer.size {
+            return None;
+        }
+        self.index += 1;
+        self.ring_buffer
+            .data
+            .get((self.index + self.ring_buffer.head - 1) % self.ring_buffer.size)
     }
 }
