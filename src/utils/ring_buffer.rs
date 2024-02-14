@@ -1,4 +1,6 @@
 #[derive(Debug)]
+
+/// A generic ring buffer
 pub struct RingBuffer<T, const BUFFER_SIZE: usize> {
     head: usize,
     pub size: usize,
@@ -24,34 +26,58 @@ impl<T: Default + Copy, const BUFFER_SIZE: usize> RingBuffer<T, BUFFER_SIZE> {
     }
 }
 
-// impl IntoIterator for RingBuffer {
-//     type Item = f32;
+/// A ring buffer which implements higher-quality downsampling by averaging
+/// incoming samples before inserting them.
+pub struct DownsampledRingBuffer<const BUFFER_SIZE: usize> {
+    /// The downsampling ratio - For each `sample_delta`th input sample, the sum
+    /// of previously accumulated sampels goes into the DownsampledRingBuffer
+    sample_delta: f32,
+    pub ring_buffer: RingBuffer<f32, BUFFER_SIZE>,
+    /// Keeps track of current "time"
+    t: f32,
+    /// Averages samples before inserting them
+    accumulator: f32,
+}
 
-//     type IntoIter = RingBufferIntoIterator;
+impl<const BUFFER_SIZE: usize> DownsampledRingBuffer<BUFFER_SIZE> {
+    /// Creates a new instance of `DownsampledRingBuffer` with the specified
+    /// sample rate and length.
+    ///
+    /// # Arguments
+    ///
+    /// * `sample_rate` - The sample rate in Hz.
+    /// * `length` - The length of the buffer in seconds. Higher values
+    ///   correspond to higher downsampling ratios
+    ///
+    /// # Returns
+    ///
+    /// A new instance of `DownsampledRingBuffer`.
+    pub fn new(sample_rate: f32, length: f32) -> Self {
+        Self {
+            ring_buffer: RingBuffer::new(),
+            sample_delta: ((sample_rate / BUFFER_SIZE as f32) * length),
+            t: 0.,
+            accumulator: 0.0,
+        }
+    }
 
-//     fn into_iter(self) -> Self::IntoIter {
-//         RingBufferIntoIterator {
-//             ring_buffer: self,
-//             index: 0,
-//         }
-//     }
-// }
+    /// Enqueues a new sample by adding it to the accumulator first and pushing
+    /// it to the ring buffer if the gap between the last pushed sample is large
+    /// enough.
+    pub fn enqueue(self: &mut Self, value: f32) {
+        // Add new sample to the accumulator
+        self.accumulator += value;
 
-// pub struct RingBufferIntoIterator {
-//     ring_buffer: RingBuffer,
-//     index: usize,
-// }
+        // `sample_delta` is the gap between input samples for which we add a
+        // new sample to the downsampled buffer. So when our steadily-increasing
+        // `t` is above the delta, it's time to enqueue the accumulated samples.
+        if self.t >= self.sample_delta {
+            self.accumulator /= self.t;
+            self.ring_buffer.enqueue(self.accumulator);
 
-// impl Iterator for RingBufferIntoIterator {
-//     type Item = f32;
-//     fn next(&mut self) -> Option<f32> {
-//         if self.index >= self.ring_buffer.size {
-//             return None;
-//         }
-//         self.index += 1;
-//         self.ring_buffer
-//             .data
-//             .get((self.index + self.ring_buffer.head - 1) % self.ring_buffer.size)
-//             .copied()
-//     }
-// }
+            self.t -= self.sample_delta;
+            self.accumulator = 0.0;
+        }
+        self.t += 1.;
+    }
+}
