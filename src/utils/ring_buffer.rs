@@ -22,11 +22,66 @@ impl<T: Default + Copy, const SIZE: usize> RingBuffer<T, SIZE> {
         self.data.iter_mut().for_each(|x| *x = T::default());
     }
 
-    pub fn into_iter(self: &mut Self) -> RingBufferIterator<T, SIZE> {
+    pub fn into_iter_mut(self: &mut Self) -> RingBufferIteratorMut<T, SIZE> {
+        RingBufferIteratorMut {
+            pos: self.head,
+            ring_buffer: self,
+        }
+    }
+
+    pub fn into_iter(self: &Self) -> RingBufferIterator<T, SIZE> {
         RingBufferIterator {
             pos: self.head,
             ring_buffer: self,
         }
+    }
+}
+
+pub struct RingBufferIterator<'a, T, const SIZE: usize> {
+    pos: usize,
+    ring_buffer: &'a RingBuffer<T, SIZE>,
+}
+
+impl<'a, T: Default + Copy, const SIZE: usize> Iterator for RingBufferIterator<'a, T, SIZE> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pos += 1;
+        self.pos %= SIZE;
+        if self.pos != self.ring_buffer.head {
+            return Some(self.ring_buffer.data[self.pos]);
+        }
+        None
+    }
+}
+
+impl<'a, T: Default + Copy, const SIZE: usize> DoubleEndedIterator
+    for RingBufferIterator<'a, T, SIZE>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.pos = (self.pos + (SIZE - 1)) % SIZE;
+        if self.pos != self.ring_buffer.head {
+            return Some(self.ring_buffer.data[self.pos]);
+        }
+        None
+    }
+}
+
+pub struct RingBufferIteratorMut<'a, T, const SIZE: usize> {
+    pos: usize,
+    ring_buffer: &'a mut RingBuffer<T, SIZE>,
+}
+
+impl<'a, T: Default + Copy, const SIZE: usize> Iterator for RingBufferIteratorMut<'a, T, SIZE> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.pos += 1;
+        self.pos %= SIZE;
+        if self.pos != self.ring_buffer.head {
+            return Some(self.ring_buffer.data[self.pos]);
+        }
+        None
     }
 }
 
@@ -44,7 +99,7 @@ impl<const SIZE: usize> PeakWaveformRingBuffer<f32, SIZE> {
     pub fn new(sample_rate: f32, duration: f32) -> Self {
         Self {
             ring_buffer: RingBuffer::<(f32, f32), SIZE>::new(),
-            min_acc: std::f32::INFINITY,
+            min_acc: 0.,
             max_acc: 0.,
             sample_delta: Self::sample_delta(sample_rate as f32, duration as f32),
             duration,
@@ -53,13 +108,13 @@ impl<const SIZE: usize> PeakWaveformRingBuffer<f32, SIZE> {
         }
     }
 
-    fn set_sample_rate(self: &mut Self, sample_rate: f32) {
+    pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.sample_delta = Self::sample_delta(sample_rate, self.duration);
         self.ring_buffer.clear();
     }
 
-    fn set_duration(self: &mut Self, duration: f32) {
+    pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
         self.sample_delta = Self::sample_delta(self.sample_rate, duration);
         self.ring_buffer.clear();
@@ -74,7 +129,7 @@ impl<const SIZE: usize> PeakWaveformRingBuffer<f32, SIZE> {
         if self.t <= 0.0 {
             self.ring_buffer.enqueue((self.min_acc, self.max_acc));
             self.t += self.sample_delta;
-            self.min_acc = std::f32::INFINITY;
+            self.min_acc = 0.;
             self.max_acc = 0.;
         }
         if value > self.max_acc {
@@ -83,24 +138,6 @@ impl<const SIZE: usize> PeakWaveformRingBuffer<f32, SIZE> {
         if value < self.min_acc {
             self.min_acc = value
         }
-    }
-}
-
-pub struct RingBufferIterator<'a, T, const SIZE: usize> {
-    pos: usize,
-    ring_buffer: &'a mut RingBuffer<T, SIZE>,
-}
-
-impl<'a, T: Default + Copy, const SIZE: usize> Iterator for RingBufferIterator<'a, T, SIZE> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.pos += 1;
-        self.pos %= SIZE;
-        if self.pos != self.ring_buffer.head {
-            return Some(self.ring_buffer.data[self.pos]);
-        }
-        None
     }
 }
 

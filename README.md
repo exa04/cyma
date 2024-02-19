@@ -5,7 +5,7 @@ Views and associated data structures for plug-in UIs made using [nih-plug](https
 | 📊 Visualizers             | 🎛️ Controls       |
 |----------------------------|--------------------|
 | ❌ Peak meter              | ❌ Slider         |
-| ❌ Peak Oscilloscope       | ❌ Overlay Slider |
+| ✔️ Peak Oscilloscope       | ❌ Overlay Slider |
 | ❌ Loudness meter          | ❌ XY-Pad         |
 | ❌ Loudness graph          | ❌ Knob           |
 | ❌ Spectrogram             | ❌ Button         |
