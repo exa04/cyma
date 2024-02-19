@@ -6,15 +6,16 @@ use crate::utils::PeakWaveformRingBuffer;
 
 /// A peak Oscilloscope.
 ///
-/// Takes in a PeakWaveformRingBuffer to display the waveform, retaining peak
-/// details for all frequencies within the sample rate, regardless of buffer
-/// size.
+/// Displays a waveform, retaining peak details for all frequencies within the
+/// sample rate, regardless of buffer size.
+///
+/// To use this Visualizer, you need a PeakWaveformBuffer that you write to
+/// inside your plugin code, and then send to the editor thread. The buffer also
+/// needs to be thread-safe (which is why it's behind an `Arc<Mutex>`) so that
+/// you can send it to the editor thread. So, usually, you'll need to follow
+/// the following steps.
 ///
 /// # How to use
-///
-/// To use this Visualizer, you need a PeakWaveformBuffer. It also needs to be
-/// made thread-safe so that you can send it to the editor thread. So, usually,
-/// you'll need to follow these steps:
 ///
 /// - Add a an `Arc<Mutex<PeakWaveformRingBuffer<f32, SIZE>>>` to your plugin struct (providing your own `SIZE` - typically, anything from 500 to 5000 is fine)
 /// - Initialize the buffer by calling `set_sample_rate()` on it inside your plugin's `initialize()` function
@@ -105,8 +106,14 @@ impl<B, const BUFFER_SIZE: usize> Oscilloscope<B, BUFFER_SIZE>
 where
     B: Lens<Target = Arc<Mutex<PeakWaveformRingBuffer<f32, BUFFER_SIZE>>>>,
 {
+    /// Creates a new Oscilloscope.
+    ///
+    /// Takes in a `buffer`, which should be used to store the peak values. You
+    /// need to write to it inside your plugin code, thread-safely send it to
+    /// the editor thread, and then pass it into this oscilloscope. Which is
+    /// also why it is behind an `Arc<Mutex>`.
     pub fn new(cx: &mut Context, buffer: B) -> Handle<Self> {
-        Self { buffer }.build(cx, |cx| {})
+        Self { buffer }.build(cx, |_| {})
     }
 }
 
@@ -146,7 +153,7 @@ where
             &{
                 let mut path = vg::Path::new();
                 let binding = self.buffer.get(cx);
-                let ring_buf = &(binding.lock().unwrap()).ring_buffer;
+                let ring_buf = &(binding.lock().unwrap());
 
                 path.move_to(x, y + h / 2.);
 
