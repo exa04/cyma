@@ -14,114 +14,9 @@ use crate::utils::PeakRingBuffer;
 ///
 /// # How to use
 ///
-/// To use this Visualizer, you need a [`PeakWaveformBuffer`](`crate::utils::ring_buffer::PeakRingBuffer`)
+/// To use this Visualizer, you need a [`PeakRingBuffer`](`crate::utils::PeakRingBuffer`)
 /// that you write to inside your plugin code, and then send to the editor
-/// thread. Here's a step-by-step tutorial on how to achieve this setup.
-///
-/// Add a an `Arc<Mutex<PeakRingBuffer<f32, SIZE>>>` to your plugin struct.
-///
-/// *lib.rs*
-/// ```ignore
-/// pub struct YourPlugin {
-///     oscilloscope_buffer: Arc<Mutex<PeakRingBuffer<f32, 1024>>>,
-/// }
-/// ```
-///
-/// *lib.rs*
-/// ```ignore
-/// impl Default for YourPlugin {
-///     fn default() -> Self {
-///         Self {
-///             oscilloscope_buffer: Arc::new(Mutex::new(PeakRingBuffer::new(44100., 20.))),
-///         }
-///     }
-/// }
-/// ```
-///
-/// Call [`set_sample_rate()`](`crate::utils::PeakRingBuffer::set_sample_rate()`)
-/// on the buffer when the sample rate is known.
-///
-/// *lib.rs*
-/// ```ignore
-/// impl Plugin for YourPlugin {
-///     fn initialize(
-///         &mut self,
-///         _audio_io_layout: &AudioIOLayout,
-///         buffer_config: &BufferConfig,
-///         _context: &mut impl InitContext<Self>,
-///     ) -> bool {
-///         match self.visualizer_post_buffer.lock() {
-///             Ok(mut buffer) => {
-///                 buffer.set_sample_rate(buffer_config.sample_rate);
-///             }
-///             Err(_) => {
-///                 // Your error handling here
-///             }
-///         }
-///         true
-///     }
-/// }
-/// ```
-///
-/// Push samples into the buffer inside your plugin's `process()` function.
-///
-/// *lib.rs*
-/// ```ignore
-/// impl Plugin for YourPlugin {
-///     fn process(
-///        &mut self,
-///        buffer: &mut Buffer,
-///        _aux: &mut AuxiliaryBuffers,
-///        _context: &mut impl ProcessContext<Self>,
-///     ) -> ProcessStatus {
-///         for sample in buffer.iter_samples()[0] {
-///             self.oscilloscope_buffer
-///                 .lock()
-///                 .unwrap()
-///                 .enqueue(sample.clone());
-///         }
-///     }
-/// }
-/// ```
-///
-/// Add a new field to your editor's data struct, so you can send the buffer data to it.
-///
-/// *editor.rs*
-/// ```ignore
-/// #[derive(Lens, Clone)]
-/// pub(crate) struct Data {
-///     pub(crate) oscilloscope_buffer: Arc<Mutex<PeakRingBuffer<f32, 1024>>>,
-///     ...
-/// }
-/// ```
-///
-/// Inside the editor's `create()` function, call `Oscilloscope::new()` and pass the buffer into it.
-///
-/// *editor.rs*
-/// ```ignore
-/// pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
-///     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
-///         editor_data.clone().build(cx);
-///         Oscilloscope::new(cx, Data::oscilloscope_buffer);
-///     })
-/// }
-/// ```
-///
-/// Send the buffer to your editor by passing it through your plugin's `editor()` function.
-///
-/// *lib.rs*
-/// ```ignore
-/// impl Plugin for YourPlugin {
-///     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-///         editor::create(
-///             editor::Data {
-///                 oscilloscope_buffer: self.oscilloscope_buffer.clone(),
-///             },
-///             ...
-///         )
-///     }
-/// }
-/// ```
+/// thread - wrap it in an `Arc<Mutex>` to send it.
 pub struct Oscilloscope<B>
 where
     B: Lens<Target = Arc<Mutex<PeakRingBuffer<f32>>>>,
@@ -133,12 +28,14 @@ impl<B> Oscilloscope<B>
 where
     B: Lens<Target = Arc<Mutex<PeakRingBuffer<f32>>>>,
 {
-    ///     Creates a new Oscilloscope.
+    /// Creates a new Oscilloscope.
     ///    
-    ///     Takes in a `buffer`, which should be used to store the peak values. You
-    ///     need to write to it inside your plugin code, thread-safely send it to
-    ///     the editor thread, and then pass it into this oscilloscope. Which is
-    ///     also why it is behind an `Arc<Mutex>`.
+    /// Takes in a `buffer`, which should be used to store the peak values. You
+    /// need to write to it inside your plugin code, thread-safely send it to
+    /// the editor thread, and then pass it into this oscilloscope. Which is
+    /// also why it is behind an `Arc<Mutex>`.
+    ///
+    /// See [``]
     pub fn new(cx: &mut Context, buffer: B) -> Handle<Self> {
         Self { buffer }.build(cx, |_| {})
     }
@@ -160,20 +57,6 @@ where
         let h = bounds.h;
 
         let line_width = cx.scale_factor();
-
-        // Background
-        canvas.fill_path(
-            &{
-                let mut path = vg::Path::new();
-                path.move_to(x, y);
-                path.line_to(x + w, y);
-                path.line_to(x + w, y + h);
-                path.line_to(x, y + h);
-                path.close();
-                path
-            },
-            &vg::Paint::color(cx.background_color().into()),
-        );
 
         // Waveform
         canvas.fill_path(
