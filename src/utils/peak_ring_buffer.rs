@@ -1,8 +1,8 @@
-use std::fmt::Debug;
-
 use crate::utils::ring_buffer::{Iter, RingBuffer};
 
+use nih_plug::buffer::Buffer;
 use num_traits::real::Real;
+use std::fmt::Debug;
 
 /// A special type of ring buffer, intended for use in peak waveform analysis.
 ///
@@ -113,6 +113,17 @@ where
 
     pub fn len(&self) -> usize {
         self.buffer.len()
+    }
+}
+
+impl PeakRingBuffer<f32> {
+    /// Enqueues an entire [`Buffer`], mono-summing it if necessary.
+    pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer) {
+        for sample in buffer.iter_samples() {
+            self.enqueue(
+                (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
+            );
+        }
     }
 }
 
