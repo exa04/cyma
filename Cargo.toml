@@ -6,6 +6,7 @@ description = "UI widgets and other utilities for audio plugins using vizia"
 
 [dependencies]
 nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+num-traits = "0.2.18"
 
 [dev-dependencies]
 rand = "0.8.5"

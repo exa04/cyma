@@ -2129,6 +2129,7 @@ name = "plext"
 version = "0.1.0"
 dependencies = [
  "nih_plug_vizia",
+ "num-traits",
  "rand 0.8.5",
 ]
 

@@ -1,3 +1,4 @@
-pub mod oscilloscope;
+/// A peak Oscilloscope.
+mod oscilloscope;
 
-pub use oscilloscope::*;
+pub use oscilloscope::Oscilloscope;

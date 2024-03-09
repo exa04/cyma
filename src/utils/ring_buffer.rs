@@ -1,286 +1,507 @@
-/// A fixed-size ring buffer that stores elements of type `T`.
+use std::fmt::Formatter;
+
+use std::fmt::Debug;
+use std::ops::{Deref, DerefMut, Index, IndexMut};
+
+/// A buffer that stores elements of type `T` in a First-In-First-Out manner.
 ///
-/// Enqueues elements in a FIFO (First-In-First-Out) manner. Also provides
-/// mutable and immutable iterators.
+/// The `RingBuffer` struct allows enqueueing new elements onto its tail. When
+/// an element is enqueued, all older elements shift towards the head and the
+/// oldest element is popped off the head of the buffer. Due to its fixed-size
+/// nature, the ring buffer is very fast and doesn't dynamically reallocate
+/// itself, or move any elements around when an element is added.
 ///
-/// The `RingBuffer` allows enqueueing elements to the end of the buffer. When
-/// an element is added to a full RingBuffer, the last element is removed from
-/// the start of the ring buffer. Due to its fixed-size nature, the ring buffer
-/// lives on the stack, is very fast and doesn't dynamically reallocate when an
-/// element is added. It is foundational to visualizers, certain audio effects,
-/// and really any use case where elements need to be sequentally enqueued in
-/// this circular manner.
+/// It is foundational to visualizers, certain audio effects, and many other
+/// real-time applications where elements need to be sequentally enqueued.
 ///
 /// # Example
 ///
 /// ```
 /// use plext::utils::RingBuffer;
 ///
-/// let mut buffer: RingBuffer<i32, 5> = RingBuffer::new();
+/// let mut rb = RingBuffer::<i32>::new(4);
 ///
-/// // buffer = [0, 0, 0, 0, 0]
+/// rb.enqueue(1);
+/// rb.enqueue(2);
+/// dbg!(&rb);
 ///
-/// buffer.enqueue(1);
-/// buffer.enqueue(2);
-/// buffer.enqueue(3);
+/// // &rb = [0, 0, 1, 2]
 ///
-/// // buffer = [0, 0, 1, 2, 3]
+/// rb.enqueue(3);
+/// rb.enqueue(4);
+/// dbg!(&rb);
 ///
-/// assert_eq!(buffer.get(0), Some(&0));
-/// assert_eq!(buffer.get(2), Some(&1));
+/// // &rb = [1, 2, 3, 4]
 ///
-/// buffer.enqueue(10);
-/// buffer.enqueue(11);
-/// buffer.enqueue(12);
+/// rb.enqueue(5);
+/// dbg!(&rb);
 ///
-/// // buffer = [2, 3, 10, 11, 12]
+/// // &rb = [2, 3, 4, 5]
 ///
-/// assert_eq!(buffer.get(1), Some(&3));
-/// assert_eq!(buffer.get(3), Some(&11));
+/// let tripled: Vec<i32> = (&rb).into_iter().map(|x| *x * 3).collect();
+///
+/// dbg!(tripled);
+///
+/// // tripled = [6, 9, 12, 15]
 /// ```
-#[derive(Debug, Clone)]
-
-pub struct RingBuffer<T, const SIZE: usize> {
+///
+/// Internally, this buffer stores elements in sequence, wrapping around to
+/// replace old values. The order in which elements are retrieved by indexing
+/// into a RingBuffer, or iterating over it, thus differs from the way they're
+/// internally stored. If you dereference this type, you get a slice with the
+/// internal order of all elements.
+///
+/// ```
+/// use plext::utils::RingBuffer;
+///
+/// let mut rb = RingBuffer::<i32>::new(4);
+///
+/// rb.enqueue(1);
+/// rb.enqueue(2);
+/// rb.enqueue(3);
+/// rb.enqueue(4);
+/// rb.enqueue(5);
+///
+/// assert_eq!(rb[0], 2);       //  rb = [2, 3, 4, 5]
+/// assert_eq!((*rb)[0], 5);    // *rb = [5, 2, 3, 4]
+/// ```
+#[derive(Clone, PartialEq, Eq, Default, Hash)]
+pub struct RingBuffer<T> {
     head: usize,
-    data: [T; SIZE],
+    size: usize,
+    data: Vec<T>,
 }
 
-impl<T: Default + Copy, const SIZE: usize> RingBuffer<T, SIZE> {
-    pub fn new() -> Self {
+impl<T: Default + Copy + Debug> RingBuffer<T> {
+    /// Constructs a new RingBuffer with the given size.
+    pub fn new(size: usize) -> Self {
         Self {
             head: 0,
-            data: [T::default(); SIZE],
+            size,
+            data: vec![T::default(); size],
         }
     }
 
-    /// Adds a new element of type `T` to the buffer. If the buffer is full, the
-    /// oldest element is removed.
-    pub fn enqueue(self: &mut Self, value: T) {
-        self.data[self.head] = value;
-        self.head = (self.head + 1) % SIZE;
+    /// Resizes the RingBuffer to the given size.
+    ///
+    /// Internally, this either calls [`shrink()`](`RingBuffer::shrink()`), or
+    /// [`grow()`](`RingBuffer::grow()`), depending on the desired size. This
+    /// operation keeps the order of the values intact.
+    pub fn resize(self: &mut Self, size: usize) {
+        if size < self.size {
+            self.shrink(size);
+        } else if size > self.size {
+            self.grow(size);
+        }
     }
 
-    /// Resets the buffer
+    /// Shrinks the RingBuffer to the given size.
+    ///
+    /// The most recently enqueued elements are preserved. This operation keeps
+    /// the order of the values intact.
+    pub fn shrink(self: &mut Self, size: usize) {
+        let mut data = vec![];
+
+        if size <= self.head {
+            // Copy the last `size` elements before the head
+            data.extend_from_slice(&self.data[self.head - size..self.head]);
+        } else {
+            // Copy the last `size` elements before the buffer wraps around
+            data.extend_from_slice(&self.data[self.size - (size - self.head)..self.size]);
+            // Copy everything before the head
+            data.extend_from_slice(&self.data[0..self.head]);
+        }
+
+        self.head = 0;
+        self.size = size;
+        self.data = data;
+    }
+
+    /// Grows the RingBuffer.
+    ///
+    /// The extra space is filled with the default values for your data type
+    /// (usually 0). This operation keeps the order of the values intact.
+    pub fn grow(self: &mut Self, size: usize) {
+        let mut data = vec![];
+
+        // Copy everything after the head
+        data.extend_from_slice(&self.data[self.head..self.size]);
+        // Copy everything before the head
+        data.extend_from_slice(&self.data[0..self.head]);
+
+        for _ in self.size..size {
+            data.push(T::default());
+        }
+
+        self.data = data;
+        self.head = self.size;
+        self.size = size;
+    }
+
+    /// Enqueues an element into the RingBuffer.
+    ///
+    /// Once enqueued, the value is situated at the tail of the buffer and the
+    /// oldest element is removed from the head.
+    pub fn enqueue(self: &mut Self, value: T) {
+        self.data[self.head] = value;
+        self.head = (self.head + 1) % self.size;
+    }
+
+    pub fn len(self: &Self) -> usize {
+        self.size
+    }
+
+    /// Clears the entire buffer, filling it with default values (usually 0)
     pub fn clear(self: &mut Self) {
         self.data.iter_mut().for_each(|x| *x = T::default());
     }
+}
 
-    /// Returns a reference to the element at `index` or `None` if out of bounds
-    pub fn get(self: &Self, index: usize) -> Option<&T> {
-        self.data.get((index + self.head) % SIZE)
-    }
-
-    /// Returns a mutable iterator to the buffer's data. If you want an
-    /// immutable iterator, use [`into_iter()`](fn@into_iter).
-    pub fn into_iter_mut(self: &mut Self) -> RingBufferIteratorMut<T, SIZE> {
-        RingBufferIteratorMut {
-            pos: self.head,
-            ring_buffer: self,
-        }
-    }
-
-    /// Returns an immutable iterator to the buffer's data. If you want a
-    /// mutable iterator, use [`into_iter_mut()`](fn@into_iter_mut).
-    ///
-    /// # Example
-    ///
-    /// Using `into_iter()`, we can print a ring buffer in order.
-    ///
-    /// ```
-    /// use plext::utils::RingBuffer;
-    /// let mut buffer: RingBuffer<i32, 5> = RingBuffer::new();
-    ///
-    /// buffer.enqueue(1);
-    /// buffer.enqueue(2);
-    /// buffer.enqueue(3);
-    ///
-    /// buffer.into_iter().for_each(|n| {
-    ///     print!("{} ", n);
-    /// })
-    /// ```
-    pub fn into_iter(self: &Self) -> RingBufferIterator<T, SIZE> {
-        RingBufferIterator {
-            pos: self.head,
-            ring_buffer: self,
-        }
+impl<T: Debug + Copy> Debug for RingBuffer<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        f.debug_list().entries(self.into_iter()).finish()
     }
 }
 
-pub struct RingBufferIterator<'a, T, const SIZE: usize> {
-    pos: usize,
-    ring_buffer: &'a RingBuffer<T, SIZE>,
-}
-
-impl<'a, T: Default + Copy, const SIZE: usize> Iterator for RingBufferIterator<'a, T, SIZE> {
+impl<T: Copy> IntoIterator for RingBuffer<T> {
     type Item = T;
+    type IntoIter = IntoIter<T>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.pos += 1;
-        self.pos %= SIZE;
-        if self.pos != self.ring_buffer.head {
-            return Some(self.ring_buffer.data[self.pos]);
+    /// Creates a consuming iterator from the ring buffer, moving it.
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter {
+            index: 0,
+            index_back: self.size,
+            ring_buffer: self,
         }
-        None
+    }
+}
+impl<'a, T: Copy> IntoIterator for &'a RingBuffer<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    /// Creates an iterator from a reference.
+    fn into_iter(self) -> Self::IntoIter {
+        Iter {
+            ring_buffer: self,
+            index: 0,
+            index_back: self.size,
+        }
     }
 }
 
-impl<'a, T: Default + Copy, const SIZE: usize> DoubleEndedIterator
-    for RingBufferIterator<'a, T, SIZE>
-{
+impl<T> Index<usize> for RingBuffer<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        if index >= self.size {
+            panic!(
+                "Invalid ring buffer access: Index {} is out of range for ring buffer of size {}",
+                index, self.size
+            );
+        }
+        &self.data[(self.head + index) % self.size]
+    }
+}
+impl<T> IndexMut<usize> for RingBuffer<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index >= self.size {
+            panic!(
+                "Invalid ring buffer access: Index {} is out of range for ring buffer of size {}",
+                index, self.size
+            );
+        }
+        &mut self.data[(self.head + index) % self.size]
+    }
+}
+
+/// An iterator that moves out of a [`RingBuffer`].
+///
+/// This struct is created by the `into_iter` method on [`RingBuffer`]
+pub struct IntoIter<T> {
+    ring_buffer: RingBuffer<T>,
+    index: usize,
+    index_back: usize,
+}
+impl<T: Copy> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.ring_buffer.size {
+            return None;
+        };
+        let item = Some(self.ring_buffer[self.index]);
+        self.index += 1;
+        item
+    }
+}
+impl<T: Copy> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.pos = (self.pos + (SIZE - 1)) % SIZE;
-        if self.pos != self.ring_buffer.head {
-            return Some(self.ring_buffer.data[self.pos]);
+        if self.index_back == 0 {
+            return None;
         }
-        None
+        self.index_back -= 1;
+        Some(self.ring_buffer[self.index_back])
     }
 }
 
-pub struct RingBufferIteratorMut<'a, T, const SIZE: usize> {
-    pos: usize,
-    ring_buffer: &'a mut RingBuffer<T, SIZE>,
+/// An immutable iterator over a [`RingBuffer`].
+///
+/// This struct is created by the `into_iter` method on [`RingBuffer`]
+pub struct Iter<'a, T> {
+    ring_buffer: &'a RingBuffer<T>,
+    index: usize,
+    index_back: usize,
 }
-
-impl<'a, T: Default + Copy, const SIZE: usize> Iterator for RingBufferIteratorMut<'a, T, SIZE> {
-    type Item = T;
-
+impl<'a, T: Copy> Iterator for Iter<'a, T> {
+    type Item = &'a T;
     fn next(&mut self) -> Option<Self::Item> {
-        self.pos += 1;
-        self.pos %= SIZE;
-        if self.pos != self.ring_buffer.head {
-            return Some(self.ring_buffer.data[self.pos]);
+        if self.index >= self.ring_buffer.size {
+            return None;
+        };
+        let item = Some(&self.ring_buffer[self.index]);
+        self.index += 1;
+        item
+    }
+}
+impl<'a, T: Copy> DoubleEndedIterator for Iter<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.index_back == 0 {
+            return None;
         }
-        None
+        self.index_back -= 1;
+        Some(&self.ring_buffer[self.index_back])
     }
 }
 
-/// A special type of ring buffer, intended for use in peak waveform analysis.
-///
-/// The `PeakWaveformRingBuffer` is a wrapper around the `RingBuffer` struct
-/// that specifically handles waveforms. It stores elements of type `T` in
-/// pairs, representing the minimum and maximum values of a waveform over a
-/// certain duration. It provides methods for setting the sample rate and
-/// duration, as well as enqueueing new values and retrieving the stored
-/// waveform data.
-///
-/// For each pair `(T,T)` of samples that a `PeakWaveformRingBuffer<T>` holds,
-/// The first element is the minimum (trough), and the second is the maximum
-/// (crest) within the time frame that these peaks represent.
-///
-/// # Example
-///
-/// Here's how to create a 10-second long `PeakWaveformRingBuffer` with 512
-/// samples at a sample rate of 44.1 kHz, stored as f32 values.
-///
-/// ```
-/// use plext::utils::PeakWaveformRingBuffer;
-/// let mut rb = PeakWaveformRingBuffer::<f32, 512>::new(44100., 10.0);
-/// ```
-///
-/// It will now take `(44100*10)/512` enqueued samples for a new pair of maximum
-/// and minimum values to be enqueued into the buffer.
-pub struct PeakWaveformRingBuffer<T, const SIZE: usize> {
-    ring_buffer: RingBuffer<(T, T), SIZE>,
-    min_acc: T,
-    max_acc: T,
-    sample_rate: f32,
-    duration: f32,
-    sample_delta: f32,
-    t: f32,
+impl<T: Default> Deref for RingBuffer<T> {
+    type Target = [T];
+    /// Dereferences the underlying data, giving you direct access to it.
+    ///
+    /// Crucially, this does not preserve the ordering you would get by
+    /// iterating over the `RingBuffer` or indexing it directly.
+    fn deref(&self) -> &Self::Target {
+        self.data.deref()
+    }
 }
-
-impl<const SIZE: usize> PeakWaveformRingBuffer<f32, SIZE> {
-    /// Creates a new `PeakWaveformRingBuffer` with the specified sample rate
-    /// and duration (in seconds)
-    pub fn new(sample_rate: f32, duration: f32) -> Self {
-        Self {
-            ring_buffer: RingBuffer::<(f32, f32), SIZE>::new(),
-            min_acc: 0.,
-            max_acc: 0.,
-            sample_delta: Self::sample_delta(sample_rate as f32, duration as f32),
-            duration,
-            sample_rate,
-            t: 1.0,
-        }
-    }
-
-    /// Sets the sample rate of the buffer and **clears** it
-    pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
-        self.sample_rate = sample_rate;
-        self.sample_delta = Self::sample_delta(sample_rate, self.duration);
-        self.ring_buffer.clear();
-    }
-
-    /// Sets the duration of the buffer (in seconds) and **clears** it
-    pub fn set_duration(self: &mut Self, duration: f32) {
-        self.duration = duration;
-        self.sample_delta = Self::sample_delta(self.sample_rate, duration);
-        self.ring_buffer.clear();
-    }
-
-    fn sample_delta(sample_rate: f32, duration: f32) -> f32 {
-        (sample_rate * duration) / SIZE as f32
-    }
-
-    /// Adds a new element of type `T` to the buffer. If the buffer is full, the
-    /// oldest element is removed.
-    pub fn enqueue(self: &mut Self, value: f32) {
-        self.t -= 1.0;
-        if self.t <= 0.0 {
-            self.ring_buffer.enqueue((self.min_acc, self.max_acc));
-            self.t += self.sample_delta;
-            self.min_acc = 0.;
-            self.max_acc = 0.;
-        }
-        if value > self.max_acc {
-            self.max_acc = value
-        }
-        if value < self.min_acc {
-            self.min_acc = value
-        }
-    }
-
-    /// Returns a reference to the element at `index` or `None` if out of bounds
-    pub fn get(self: &Self, index: usize) -> Option<&(f32, f32)> {
-        self.ring_buffer.get(index)
-    }
-
-    /// Returns an immutable iterator to the buffer's data. If you want a
-    /// mutable iterator, use [`into_iter_mut()`](fn@into_iter_mut).
-    pub fn into_iter(self: &Self) -> RingBufferIterator<(f32, f32), SIZE> {
-        self.ring_buffer.into_iter()
-    }
-
-    /// Returns a mutable iterator to the buffer's data. If you want an
-    /// immutable iterator, use [`into_iter()`](fn@into_iter).
-    pub fn into_iter_mut(self: &mut Self) -> RingBufferIteratorMut<(f32, f32), SIZE> {
-        self.ring_buffer.into_iter_mut()
+impl<T: Default> DerefMut for RingBuffer<T> {
+    /// Mutably dereferences the underlying data, giving you direct access to
+    /// it.
+    ///
+    /// Crucially, this does not preserve the ordering you would get by
+    /// iterating over the `RingBuffer` or indexing it directly.
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.data.deref_mut()
     }
 }
 
-#[test]
-fn test() {
-    use rand::{rngs::OsRng, Rng};
-    use std::time::Instant;
+#[cfg(test)]
+mod tests {
+    use super::RingBuffer;
 
-    const SAMPLE_RATE: usize = 44100;
-    const BLOCK_SIZE: usize = 2048;
-    const BLOCKS: usize = (SAMPLE_RATE * 1000) / BLOCK_SIZE;
-    let signal: &[f32; 2048] = &{
-        let mut x = [0.0; BLOCK_SIZE];
-        for i in 0..BLOCK_SIZE {
-            x[i] = OsRng.gen::<u32>() as f32;
+    #[test]
+    fn basics() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        // Is the buffer filled with zeroes?
+        assert_eq!(rb.data, vec![0; 4]);
+
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+
+        // Is the value at the tail (before the head) equal to 0?
+        assert_eq!(rb.data[(rb.head + rb.size - 1) % rb.size], 3);
+
+        // Is the value at the head equal to 0?
+        assert_eq!(rb.data[rb.head], 0);
+
+        rb.enqueue(4);
+        rb.enqueue(5);
+        rb.enqueue(6);
+
+        // Have the earlier values been overwritten?
+        assert!(!rb.data.contains(&1));
+        assert!(!rb.data.contains(&2));
+
+        // Do the last 4 values exist?
+        assert!(rb.data.contains(&3));
+        assert!(rb.data.contains(&4));
+        assert!(rb.data.contains(&5));
+        assert!(rb.data.contains(&6));
+    }
+
+    #[test]
+    fn clear() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+
+        assert_ne!(rb.data, vec![0; 4]);
+
+        rb.clear();
+
+        assert_eq!(rb.data, vec![0; 4]);
+    }
+
+    #[test]
+    fn resize() {
+        let mut rb = RingBuffer::<i32>::new(4);
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+        rb.enqueue(4);
+        rb.enqueue(5);
+        rb.enqueue(6);
+
+        // Growing RingBuffers
+        {
+            let mut rb_grown = rb.clone();
+            rb_grown.grow(6);
+            let mut rb_resized = rb.clone();
+            rb_resized.resize(6);
+            // Is the last inserted datum the same?
+            assert_eq!(
+                rb_grown.data[(rb_grown.head + rb_grown.size - 1) % rb_grown.size],
+                rb_resized.data[(rb_resized.head + rb_resized.size - 1) % rb_resized.size]
+            );
+            // Is the buffer zero-padded?
+            assert_eq!(rb_grown.data[rb_grown.head], 0);
+            // Does resize() do the same thing as grow() here?
+            assert_eq!(rb_grown, rb_resized);
         }
-        x
-    };
 
-    let mut rb = PeakWaveformRingBuffer::<f32, 2048>::new(SAMPLE_RATE as f32, 1.0);
-
-    let t = Instant::now();
-    for _ in 0..BLOCKS {
-        for x in signal {
-            rb.enqueue(*x);
+        // Shrinking RingBuffers
+        {
+            let mut rb_shrunk = rb.clone();
+            rb_shrunk.shrink(3);
+            let mut rb_resized = rb.clone();
+            rb_resized.resize(3);
+            // Is the last inserted datum the same?
+            assert_eq!(
+                rb_shrunk.data[(rb_shrunk.head + rb_shrunk.size - 1) % rb_shrunk.size],
+                rb_resized.data[(rb_resized.head + rb_resized.size - 1) % rb_resized.size]
+            );
+            // Does resize() do the same thing as grow() here?
+            assert_eq!(rb_shrunk, rb_resized);
         }
     }
-    dbg!(t.elapsed());
+
+    #[test]
+    fn indexing() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+
+        // Is the last value still equal to 0?
+        assert_eq!(rb[0], 0);
+
+        // Were the first bunch of values inserted correctly?
+        assert_eq!(rb[1], 1);
+        assert_eq!(rb[2], 2);
+        assert_eq!(rb[3], 3);
+
+        rb[1] *= 2;
+        rb[2] *= 3;
+        rb[3] *= 4;
+
+        // Were the values multiplied correctly?
+        assert_eq!(rb[1], 2);
+        assert_eq!(rb[2], 6);
+        assert_eq!(rb[3], 12);
+
+        rb.enqueue(4);
+        rb.enqueue(5);
+
+        // Have the newer values "pushed back" the older ones?
+        assert_eq!(rb[0], 6);
+        assert_eq!(rb[1], 12);
+        assert_eq!(rb[2], 4);
+        assert_eq!(rb[3], 5);
+
+        // Can we set an element of the buffer?
+        rb[2] = 10;
+        assert_eq!(rb[2], 10);
+    }
+
+    #[test]
+    #[should_panic]
+    fn invalid_access() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+
+        rb[4];
+    }
+
+    #[test]
+    fn iteration() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        rb.enqueue(7);
+        rb.enqueue(3);
+        rb.enqueue(8);
+
+        // Does iteration give us the data in the correct order?
+        let mut iter = (&rb).into_iter();
+        assert_eq!(iter.next(), Some(&0));
+        assert_eq!(iter.next(), Some(&7));
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&8));
+        // Do we get `None` once we step out of bounds?
+        assert_eq!(iter.next(), None);
+
+        // Is enumeration analogous to indexing?
+        (&rb)
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, n)| assert_eq!(n, &rb[i]));
+
+        // Can we sum up everything?
+        let sum: i32 = (&rb).into_iter().sum();
+        assert_eq!(sum, 18);
+
+        // Can we properly collect the buffer into a vector?
+        let vec: Vec<i32> = (&rb).into_iter().copied().collect();
+        assert_eq!(vec, vec![0, 7, 3, 8]);
+
+        // Can we triple each element?
+        let tripled: Vec<i32> = (&rb).into_iter().map(|x| *x * 3).collect();
+        assert_eq!(tripled, vec![0, 21, 9, 24]);
+
+        rb.enqueue(1);
+        rb.enqueue(2);
+
+        // Do we still get our data in the correct order?
+        let mut iter = rb.clone().into_iter();
+        assert_eq!(iter.next(), Some(3));
+        assert_eq!(iter.next(), Some(8));
+        assert_eq!(iter.next(), Some(1));
+        assert_eq!(iter.next(), Some(2));
+        // Do we still get `None` once we step out of bounds?
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn deref() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        rb.enqueue(7);
+        rb.enqueue(3);
+        rb.enqueue(8);
+        rb.enqueue(1);
+        rb.enqueue(9);
+
+        // Can we get a value by dereferencing it?
+        assert_eq!((*rb)[0], 9);
+
+        // Can we set a value by mutably dereferencing it?
+        (*rb)[2] = 200;
+        assert_eq!(rb[1], 200);
+    }
 }
