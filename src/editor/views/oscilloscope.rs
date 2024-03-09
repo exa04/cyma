@@ -17,6 +17,10 @@ use crate::utils::PeakRingBuffer;
 /// To use this Visualizer, you need a [`PeakRingBuffer`](`crate::utils::PeakRingBuffer`)
 /// that you write to inside your plugin code, and then send to the editor
 /// thread - wrap it in an `Arc<Mutex>` to send it.
+///
+/// ```no_run
+/// Oscilloscope::new(cx, Data::oscilloscope_buffer).color(theme_colors::FOREGROUND);
+/// ```
 pub struct Oscilloscope<B>
 where
     B: Lens<Target = Arc<Mutex<PeakRingBuffer<f32>>>>,
@@ -34,8 +38,6 @@ where
     /// need to write to it inside your plugin code, thread-safely send it to
     /// the editor thread, and then pass it into this oscilloscope. Which is
     /// also why it is behind an `Arc<Mutex>`.
-    ///
-    /// See [``]
     pub fn new(cx: &mut Context, buffer: B) -> Handle<Self> {
         Self { buffer }.build(cx, |_| {})
     }
