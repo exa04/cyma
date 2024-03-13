@@ -38,11 +38,15 @@ use std::fmt::Debug;
 #[derive(Clone, PartialEq, Default)]
 pub struct PeakRingBuffer<T> {
     buffer: RingBuffer<(T, T)>,
+    // Minimum and maximum accumulators
     min_acc: T,
     max_acc: T,
+    // The gap between elements of the buffer in samples
+    sample_delta: f32,
+    // Used to calculate the sample_delta
     sample_rate: f32,
     duration: f32,
-    sample_delta: f32,
+    // The current time, counts down from sample_delta to 0
     t: f32,
 }
 
@@ -50,8 +54,8 @@ impl<T> PeakRingBuffer<T>
 where
     T: Clone + Copy + Default + Debug + PartialOrd + Real,
 {
-    /// Creates a new `PeakRingBuffer` with the specified sample rate
-    /// and duration (in seconds)
+    /// Creates a new `PeakRingBuffer` with the specified sample rate and
+    /// duration (in seconds).
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         Self {
             buffer: RingBuffer::<(T, T)>::new(size),
@@ -64,7 +68,7 @@ where
         }
     }
 
-    /// Sets the size of the buffer and **clears** it
+    /// Sets the size of the buffer and **clears** it.
     pub fn set_size(self: &mut Self, size: usize) {
         if self.buffer.len() == size {
             return;
@@ -74,14 +78,14 @@ where
         self.buffer.clear();
     }
 
-    /// Sets the sample rate of the buffer and **clears** it
+    /// Sets the sample rate of the buffer and **clears** it.
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.sample_delta = Self::sample_delta(self.buffer.len(), sample_rate, self.duration);
         self.buffer.clear();
     }
 
-    /// Sets the duration of the buffer (in seconds) and **clears** it
+    /// Sets the duration of the buffer (in seconds) and **clears** it.
     pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
         self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, duration);
@@ -111,6 +115,7 @@ where
         }
     }
 
+    /// Returns the length of the buffer.
     pub fn len(&self) -> usize {
         self.buffer.len()
     }

@@ -147,6 +147,7 @@ impl<T: Default + Copy + Debug> RingBuffer<T> {
         self.head = (self.head + 1) % self.size;
     }
 
+    /// Returns the length of the buffer.
     pub fn len(self: &Self) -> usize {
         self.size
     }
