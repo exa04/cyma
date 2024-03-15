@@ -17,7 +17,7 @@ added!
 
 **Peak/Waveform Analysis**
   - [ ] Peak meter
-  - [ ] Peak graph
+  - [x] Peak graph
   - [x] Oscilloscope
   - [ ] Static waveform
 
