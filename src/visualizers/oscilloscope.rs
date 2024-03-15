@@ -84,7 +84,7 @@ where
                 path.close();
                 path
             },
-            &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
+            &vg::Paint::color(cx.font_color().into()),
         );
     }
 }
