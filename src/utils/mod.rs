@@ -1,5 +1,3 @@
-pub mod maxima_ring_buffer;
-pub mod ring_buffer;
+mod buffers;
 
-pub use maxima_ring_buffer::*;
-pub use ring_buffer::*;
+pub use buffers::*;
