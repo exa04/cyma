@@ -14,7 +14,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Install XCB and GL dependencies
+      run: |
+        sudo apt update
+        # baseview dependencies
+        sudo apt install libx11-xcb-dev libxcb-dri2-0-dev libgl1-mesa-dev libxcb-icccm4-dev libxcursor-dev libxcb-{render,shape,xfixes}0-dev
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Check Format
+      run: cargo fmt -- --check
+    - name: Check Clippy
+      run: cargo clippy
