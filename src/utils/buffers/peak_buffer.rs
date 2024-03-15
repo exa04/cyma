@@ -1,8 +1,14 @@
 use nih_plug::buffer::Buffer;
 use num_traits::real::Real;
-use std::fmt::Debug;
+use std::{
+    fmt::{Debug, Formatter},
+    ops::{Deref, DerefMut, Index, IndexMut},
+};
 
-use super::{ring_buffer::Iter, RingBuffer};
+use super::{
+    ring_buffer::{IntoIter, Iter},
+    RingBuffer,
+};
 
 #[derive(Clone, PartialEq, Default)]
 pub struct PeakBuffer<T> {
@@ -98,26 +104,64 @@ impl<'a, T: Copy> IntoIterator for &'a PeakBuffer<T> {
     }
 }
 
+impl<T: Debug + Copy> Debug for PeakBuffer<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        self.buffer.fmt(f)
+    }
+}
+
+impl<T> Index<usize> for PeakBuffer<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.buffer.index(index)
+    }
+}
+impl<T> IndexMut<usize> for PeakBuffer<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.buffer.index_mut(index)
+    }
+}
+
+impl<T: Default> Deref for PeakBuffer<T> {
+    type Target = [T];
+    /// Dereferences the underlying data, giving you direct access to it.
+    ///
+    /// Crucially, this does not preserve the ordering you would get by
+    /// iterating over the `RingBuffer` or indexing it directly.
+    fn deref(&self) -> &Self::Target {
+        self.buffer.deref()
+    }
+}
+impl<T: Default> DerefMut for PeakBuffer<T> {
+    /// Mutably dereferences the underlying data, giving you direct access to
+    /// it.
+    ///
+    /// Crucially, this does not preserve the ordering you would get by
+    /// iterating over the `RingBuffer` or indexing it directly.
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.buffer.deref_mut()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::PeakBuffer;
 
-    // #[test]
-    // fn enqueue() {
-    //     let mut rb = PeakBuffer::<f32>::new(16, 4.0, 8.0);
+    #[test]
+    fn enqueue() {
+        let mut rb = PeakBuffer::<f32>::new(16, 4.0, 8.0);
 
-    //     rb.enqueue(2.);
-    //     rb.enqueue(9.);
-    //     rb.enqueue(19.);
-    //     rb.enqueue(-10.);
-    //     rb.enqueue(4.);
-    //     rb.enqueue(6.);
+        rb.enqueue(2.);
+        rb.enqueue(9.);
+        rb.enqueue(19.);
+        rb.enqueue(-10.);
+        rb.enqueue(4.);
+        rb.enqueue(6.);
 
-    //     let buffer = rb.buffer.to_vec();
+        let buffer = rb.buffer.to_vec();
 
-    //     assert_eq!(buffer[0].0, 2.);
-    //     assert_eq!(buffer[0].1, 9.);
-    //     assert_eq!(buffer[1].0, 10.);
-    //     assert_eq!(buffer[1].1, 19.);
-    // }
+        assert_eq!(buffer[0], 9.);
+        assert_eq!(buffer[1], 19.);
+    }
 }

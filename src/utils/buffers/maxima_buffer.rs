@@ -2,7 +2,12 @@ use crate::utils::ring_buffer::{Iter, RingBuffer};
 
 use nih_plug::buffer::Buffer;
 use num_traits::real::Real;
-use std::fmt::Debug;
+use std::{
+    fmt::{Debug, Formatter},
+    ops::{Deref, DerefMut, Index, IndexMut},
+};
+
+use super::ring_buffer::IntoIter;
 
 /// A special type of ring buffer, intended for use in peak waveform analysis.
 ///
@@ -140,5 +145,45 @@ impl<'a, T: Copy> IntoIterator for &'a MaximaBuffer<T> {
     /// Creates an iterator from a reference.
     fn into_iter(self) -> Self::IntoIter {
         (&self.buffer).into_iter()
+    }
+}
+
+impl<T: Debug + Copy> Debug for MaximaBuffer<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        self.buffer.fmt(f)
+    }
+}
+
+impl<T> Index<usize> for MaximaBuffer<T> {
+    type Output = (T, T);
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.buffer.index(index)
+    }
+}
+impl<T> IndexMut<usize> for MaximaBuffer<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.buffer.index_mut(index)
+    }
+}
+
+impl<T: Default> Deref for MaximaBuffer<T> {
+    type Target = [(T, T)];
+    /// Dereferences the underlying data, giving you direct access to it.
+    ///
+    /// Crucially, this does not preserve the ordering you would get by
+    /// iterating over the `RingBuffer` or indexing it directly.
+    fn deref(&self) -> &Self::Target {
+        self.buffer.deref()
+    }
+}
+impl<T: Default> DerefMut for MaximaBuffer<T> {
+    /// Mutably dereferences the underlying data, giving you direct access to
+    /// it.
+    ///
+    /// Crucially, this does not preserve the ordering you would get by
+    /// iterating over the `RingBuffer` or indexing it directly.
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.buffer.deref_mut()
     }
 }
