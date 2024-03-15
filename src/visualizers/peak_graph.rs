@@ -55,7 +55,7 @@ where
 
         let line_width = cx.scale_factor();
 
-        // // Peak graph
+        // Peak graph
         canvas.fill_path(
             &{
                 let mut path = vg::Path::new();

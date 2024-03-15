@@ -72,7 +72,7 @@ where
                 for v in ring_buf.into_iter() {
                     path.line_to(
                         x + (w / ring_buf.len() as f32) * i,
-                        y + (h / 2.) * (1. - v.0) + 1.,
+                        y + (h / 2.) * (1. - v.0.clamp(-1., 1.)) + 1.,
                     );
                     i += 1.;
                 }
@@ -80,7 +80,7 @@ where
                     i -= 1.;
                     path.line_to(
                         x + (w / ring_buf.len() as f32) * i,
-                        y + (h / 2.) * (1. - v.1) + 1.,
+                        y + (h / 2.) * (1. - v.1.clamp(-1., 1.)) + 1.,
                     );
                 }
                 path.close();
