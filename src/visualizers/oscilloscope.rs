@@ -18,9 +18,6 @@ use crate::utils::MaximaBuffer;
 /// that you write to inside your plugin code, and then send to the editor
 /// thread - wrap it in an `Arc<Mutex>` to send it.
 ///
-/// ```no_run
-/// Oscilloscope::new(cx, Data::oscilloscope_buffer).color(theme_colors::FOREGROUND);
-/// ```
 pub struct Oscilloscope<B>
 where
     B: Lens<Target = Arc<Mutex<MaximaBuffer<f32>>>>,
@@ -96,17 +93,6 @@ where
 ///
 /// This is intended for use alongside the [`Oscilloscope`]. Put this grid
 /// behind an oscilloscope using a [`ZStack`] to display a grid behind it.
-///
-/// # Example
-///
-/// Here's how to overlay an Oscilloscope on top of an an OscilloscopeGrid.
-///
-/// ```no_run
-/// ZStack::new(cx, |cx| {
-///     OscilloscopeGrid::new(cx, 8.0).color(theme_colors::FOREGROUND_FAINT);
-///     Oscilloscope::new(cx, Data::oscilloscope_buffer).color(theme_colors::FOREGROUND);
-/// })
-/// ```
 pub struct OscilloscopeGrid {
     subdivisions: f32,
 }
