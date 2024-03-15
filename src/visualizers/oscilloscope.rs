@@ -4,6 +4,8 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use crate::utils::MaximaBuffer;
 
+// TODO: Allow setting a range, analogous to PeakGraph
+
 /// Displays a waveform, retaining peak details for all frequencies within the
 /// sample rate, regardless of buffer size.
 ///
@@ -88,6 +90,8 @@ where
         );
     }
 }
+
+// TODO: Revamp this and make it a generic component
 
 /// Displays a grid with a given number of subdivisions.
 ///

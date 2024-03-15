@@ -83,6 +83,8 @@ where
     }
 }
 
+// TODO: Allow seperately enqueueing left / right channel data
+
 impl PeakBuffer<f32> {
     /// Enqueues an entire [`Buffer`], mono-summing it if necessary.
     pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer) {
