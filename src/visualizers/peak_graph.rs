@@ -55,7 +55,7 @@ where
 
         let line_width = cx.scale_factor();
 
-        // Peak graph
+        // // Peak graph
         canvas.fill_path(
             &{
                 let mut path = vg::Path::new();
@@ -70,10 +70,9 @@ where
                     for v in ring_buf.into_iter() {
                         path.line_to(
                             x + (w / ring_buf.len() as f32) * i,
-                            y + 1.
-                                + h * ({
-                                    // Convert to decibels, clamp from range.0 to range.1 and then transform
-                                    // to be between 1. and 0.
+                            y + h
+                                * ({
+                                    // Convert to decibels, clamp and then transform to be between 1. and 0.
                                     1. - ((amplitude_to_db(*v)).clamp(range.0, range.1) - range.0)
                                         / (range.1 - range.0)
                                 }),
@@ -84,9 +83,9 @@ where
                     for v in ring_buf.into_iter() {
                         path.line_to(
                             x + (w / ring_buf.len() as f32) * i,
-                            y + 1.
-                                + h * ({
-                                    // Clamp from range.0 to range.1 and then transform to be between 1. and 0.
+                            y + h
+                                * ({
+                                    // Clamp  and then transform to be between 1. and 0.
                                     1. - ((*v).clamp(range.0, range.1) - range.0)
                                         / (range.1 - range.0)
                                 }),
