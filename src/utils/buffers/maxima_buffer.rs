@@ -7,8 +7,6 @@ use std::{
     ops::{Deref, DerefMut, Index, IndexMut},
 };
 
-use super::ring_buffer::IntoIter;
-
 /// A special type of ring buffer, intended for use in peak waveform analysis.
 ///
 /// This is a wrapper around the [`RingBuffer`](crate::utils::RingBuffer) struct

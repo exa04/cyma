@@ -57,8 +57,6 @@ where
         let w = bounds.w;
         let h = bounds.h;
 
-        let line_width = cx.scale_factor();
-
         // Waveform
         canvas.fill_path(
             &{

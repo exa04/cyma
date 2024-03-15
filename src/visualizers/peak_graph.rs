@@ -2,11 +2,11 @@ use std::sync::{Arc, Mutex};
 
 use crate::utils::PeakBuffer;
 use nih_plug_vizia::vizia::{
-    binding::{Lens, LensExt, Res},
+    binding::{Lens, LensExt},
     context::{Context, DrawContext},
     vg,
     view::{Canvas, Handle, View},
-    views::normalized_map::{amplitude_to_db, db_to_amplitude},
+    views::normalized_map::amplitude_to_db,
 };
 
 pub struct PeakGraph<B, R, D>

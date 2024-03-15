@@ -5,10 +5,7 @@ use std::{
     ops::{Deref, DerefMut, Index, IndexMut},
 };
 
-use super::{
-    ring_buffer::{IntoIter, Iter},
-    RingBuffer,
-};
+use super::{ring_buffer::Iter, RingBuffer};
 
 #[derive(Clone, PartialEq, Default)]
 pub struct PeakBuffer<T> {
