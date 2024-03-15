@@ -12,7 +12,7 @@ use std::fmt::Debug;
 /// interval. It provides methods for setting the sample rate and duration, as
 /// well as enqueueing new values and retrieving the stored waveform data.
 ///
-/// For each pair `(T,T)` of samples that a PeakRingBuffer holds, the first
+/// For each pair `(T,T)` of samples that a MaximaBuffer holds, the first
 /// element is the local minimum, and the second is the local maximum within the
 /// respective time frame.
 ///
@@ -24,19 +24,19 @@ use std::fmt::Debug;
 ///
 /// # Example
 ///
-/// Here's how to create a `PeakRingBuffer` with 512 samples, stored as f32
+/// Here's how to create a `MaximaBuffer` with 512 samples, stored as f32
 /// values. We'll provide a sample rate of 44.1 kHz and a length of 10 seconds.
 ///
 /// ```
-/// use plext::utils::PeakRingBuffer;
-/// let mut rb = PeakRingBuffer::<f32>::new(512, 10.0, 44100.);
+/// use plext::utils::MaximaBuffer;
+/// let mut rb = MaximaBuffer::<f32>::new(512, 10.0, 44100.);
 /// ```
 ///
 /// When we later push into this buffer, it will accumulate samples according to
 /// these restrictions. It will take (44100*10)/512 enqueued samples for a new
 /// pair of maximum and minimum values to be added to the buffer.
 #[derive(Clone, PartialEq, Default)]
-pub struct PeakRingBuffer<T> {
+pub struct MaximaBuffer<T> {
     buffer: RingBuffer<(T, T)>,
     // Minimum and maximum accumulators
     min_acc: T,
@@ -50,11 +50,11 @@ pub struct PeakRingBuffer<T> {
     t: f32,
 }
 
-impl<T> PeakRingBuffer<T>
+impl<T> MaximaBuffer<T>
 where
     T: Clone + Copy + Default + Debug + PartialOrd + Real,
 {
-    /// Creates a new `PeakRingBuffer` with the specified sample rate and
+    /// Creates a new `MaximaBuffer` with the specified sample rate and
     /// duration (in seconds).
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         Self {
@@ -62,8 +62,8 @@ where
             min_acc: T::default(),
             max_acc: T::default(),
             sample_delta: Self::sample_delta(size, sample_rate as f32, duration as f32),
-            duration,
             sample_rate,
+            duration,
             t: 1.0,
         }
     }
@@ -121,7 +121,7 @@ where
     }
 }
 
-impl PeakRingBuffer<f32> {
+impl MaximaBuffer<f32> {
     /// Enqueues an entire [`Buffer`], mono-summing it if necessary.
     pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer) {
         for sample in buffer.iter_samples() {
@@ -132,7 +132,7 @@ impl PeakRingBuffer<f32> {
     }
 }
 
-impl<'a, T: Copy> IntoIterator for &'a PeakRingBuffer<T> {
+impl<'a, T: Copy> IntoIterator for &'a MaximaBuffer<T> {
     type Item = &'a (T, T);
     type IntoIter = Iter<'a, (T, T)>;
 

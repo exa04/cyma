@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-use crate::utils::PeakRingBuffer;
+use crate::utils::MaximaBuffer;
 
 /// Displays a waveform, retaining peak details for all frequencies within the
 /// sample rate, regardless of buffer size.
@@ -14,7 +14,7 @@ use crate::utils::PeakRingBuffer;
 ///
 /// # How to use
 ///
-/// To use this Visualizer, you need a [`PeakRingBuffer`](`crate::utils::PeakRingBuffer`)
+/// To use this Visualizer, you need a [`MaximaBuffer`](`crate::utils::MaximaBuffer`)
 /// that you write to inside your plugin code, and then send to the editor
 /// thread - wrap it in an `Arc<Mutex>` to send it.
 ///
@@ -23,14 +23,14 @@ use crate::utils::PeakRingBuffer;
 /// ```
 pub struct Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<PeakRingBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<MaximaBuffer<f32>>>>,
 {
     buffer: B,
 }
 
 impl<B> Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<PeakRingBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<MaximaBuffer<f32>>>>,
 {
     /// Creates a new Oscilloscope.
     ///    
@@ -45,7 +45,7 @@ where
 
 impl<B> View for Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<PeakRingBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<MaximaBuffer<f32>>>>,
 {
     fn element(&self) -> Option<&'static str> {
         Some("22-visualizer")
