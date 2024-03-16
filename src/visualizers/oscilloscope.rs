@@ -6,8 +6,7 @@ use crate::utils::WaveformBuffer;
 
 // TODO: Allow setting a range, analogous to PeakGraph
 
-/// Displays a waveform, retaining peak details for all frequencies within the
-/// sample rate, regardless of buffer size.
+/// A waveform display for real-time input.
 ///
 /// This visualizer is particularly useful when visualizing audio data at a
 /// high sample rate, such as 44.1kHz, in a much smaller view. It does not

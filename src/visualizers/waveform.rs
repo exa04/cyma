@@ -2,8 +2,10 @@ use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-/// Displays a static waveform. For displaying frequently updating waveform
-/// data, use an [`Oscilloscope`] instead.
+/// A static waveform display.
+///
+/// For displaying frequently updating waveform data, use an [`Oscilloscope`]
+/// instead.
 pub struct Waveform<V>
 where
     V: Lens<Target = Arc<Mutex<Vec<f32>>>>,

@@ -66,3 +66,5 @@ added!
 
 **visualizers**
 - Oscilloscope *(needs review)*
+- PeakGraph
+- Waveform
