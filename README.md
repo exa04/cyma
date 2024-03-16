@@ -55,13 +55,13 @@ added!
 ### 🛠️ Utils
 
 - **RingBuffer** - A generic circular buffer
-- **MaximaBuffer** - A buffer for waveform analysis
+- **ExtremaBuffer** - A buffer for waveform analysis
 - **PeakBuffer** - A buffer for peak analysis
 
 ## Needing documentation
 **utils**
 - RingBuffer *(needs review)*
-- MaximaBuffer *(needs review)*
+- ExtremaBuffer *(needs review)*
 - PeakBuffer
 
 **visualizers**

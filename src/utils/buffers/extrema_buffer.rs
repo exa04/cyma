@@ -15,7 +15,7 @@ use std::{
 /// interval. It provides methods for setting the sample rate and duration, as
 /// well as enqueueing new values and retrieving the stored waveform data.
 ///
-/// For each pair `(T,T)` of samples that a MaximaBuffer holds, the first
+/// For each pair `(T,T)` of samples that a ExtremaBuffer holds, the first
 /// element is the local minimum, and the second is the local maximum within the
 /// respective time frame.
 ///
@@ -27,19 +27,19 @@ use std::{
 ///
 /// # Example
 ///
-/// Here's how to create a `MaximaBuffer` with 512 samples, stored as f32
+/// Here's how to create a `ExtremaBuffer` with 512 samples, stored as f32
 /// values. We'll provide a sample rate of 44.1 kHz and a length of 10 seconds.
 ///
 /// ```
-/// use plext::utils::MaximaBuffer;
-/// let mut rb = MaximaBuffer::<f32>::new(512, 10.0, 44100.);
+/// use plext::utils::ExtremaBuffer;
+/// let mut rb = ExtremaBuffer::<f32>::new(512, 10.0, 44100.);
 /// ```
 ///
 /// When we later push into this buffer, it will accumulate samples according to
 /// these restrictions. It will take (44100*10)/512 enqueued samples for a new
 /// pair of maximum and minimum values to be added to the buffer.
 #[derive(Clone, PartialEq, Default)]
-pub struct MaximaBuffer<T> {
+pub struct ExtremaBuffer<T> {
     buffer: RingBuffer<(T, T)>,
     // Minimum and maximum accumulators
     min_acc: T,
@@ -53,11 +53,11 @@ pub struct MaximaBuffer<T> {
     t: f32,
 }
 
-impl<T> MaximaBuffer<T>
+impl<T> ExtremaBuffer<T>
 where
     T: Clone + Copy + Default + Debug + PartialOrd + Real,
 {
-    /// Creates a new `MaximaBuffer` with the specified sample rate and
+    /// Creates a new `ExtremaBuffer` with the specified sample rate and
     /// duration (in seconds).
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
@@ -72,6 +72,7 @@ where
         }
     }
 
+    // TODO: Allow resizing without clearing
     /// Sets the size of the buffer and **clears** it.
     pub fn resize(self: &mut Self, size: usize) {
         if self.buffer.len() == size {
@@ -127,7 +128,7 @@ where
 
 // TODO: Allow seperately enqueueing left / right channel data
 
-impl MaximaBuffer<f32> {
+impl ExtremaBuffer<f32> {
     /// Enqueues an entire [`Buffer`], mono-summing it if necessary.
     pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer) {
         for sample in buffer.iter_samples() {
@@ -138,7 +139,7 @@ impl MaximaBuffer<f32> {
     }
 }
 
-impl<'a, T: Copy> IntoIterator for &'a MaximaBuffer<T> {
+impl<'a, T: Copy> IntoIterator for &'a ExtremaBuffer<T> {
     type Item = &'a (T, T);
     type IntoIter = Iter<'a, (T, T)>;
 
@@ -148,26 +149,26 @@ impl<'a, T: Copy> IntoIterator for &'a MaximaBuffer<T> {
     }
 }
 
-impl<T: Debug + Copy> Debug for MaximaBuffer<T> {
+impl<T: Debug + Copy> Debug for ExtremaBuffer<T> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         self.buffer.fmt(f)
     }
 }
 
-impl<T> Index<usize> for MaximaBuffer<T> {
+impl<T> Index<usize> for ExtremaBuffer<T> {
     type Output = (T, T);
 
     fn index(&self, index: usize) -> &Self::Output {
         self.buffer.index(index)
     }
 }
-impl<T> IndexMut<usize> for MaximaBuffer<T> {
+impl<T> IndexMut<usize> for ExtremaBuffer<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.buffer.index_mut(index)
     }
 }
 
-impl<T: Default> Deref for MaximaBuffer<T> {
+impl<T: Default> Deref for ExtremaBuffer<T> {
     type Target = [(T, T)];
     /// Dereferences the underlying data, giving you direct access to it.
     ///
@@ -177,7 +178,7 @@ impl<T: Default> Deref for MaximaBuffer<T> {
         self.buffer.deref()
     }
 }
-impl<T: Default> DerefMut for MaximaBuffer<T> {
+impl<T: Default> DerefMut for ExtremaBuffer<T> {
     /// Mutably dereferences the underlying data, giving you direct access to
     /// it.
     ///

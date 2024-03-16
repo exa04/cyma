@@ -37,6 +37,7 @@ where
         }
     }
 
+    // TODO: Allow resizing without clearing
     pub fn resize(self: &mut Self, size: usize) {
         if self.buffer.len() == size {
             return;
