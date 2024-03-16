@@ -2,5 +2,6 @@
 //! [nih-plug](https://github.com/robbert-vdh/nih-plug) and
 //! [VIZIA](https://github.com/vizia/vizia).
 
+pub mod controls;
 pub mod utils;
 pub mod visualizers;

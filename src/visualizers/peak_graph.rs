@@ -9,7 +9,7 @@ use nih_plug_vizia::vizia::{
     views::normalized_map::amplitude_to_db,
 };
 
-/// Displays peak values over time.
+/// A graph showing real-time peak information.
 pub struct PeakGraph<B, R, D>
 where
     B: Lens<Target = Arc<Mutex<PeakBuffer<f32>>>>,
