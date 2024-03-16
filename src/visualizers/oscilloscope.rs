@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-use crate::utils::ExtremaBuffer;
+use crate::utils::WaveformBuffer;
 
 // TODO: Allow setting a range, analogous to PeakGraph
 
@@ -16,20 +16,20 @@ use crate::utils::ExtremaBuffer;
 ///
 /// # How to use
 ///
-/// To use this Visualizer, you need a [`ExtremaBuffer`](`crate::utils::ExtremaBuffer`)
+/// To use this Visualizer, you need a [`WaveformBuffer`](`crate::utils::WaveformBuffer`)
 /// that you write to inside your plugin code, and then send to the editor
 /// thread - wrap it in an `Arc<Mutex>` to send it.
 ///
 pub struct Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<ExtremaBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
 {
     buffer: B,
 }
 
 impl<B> Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<ExtremaBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
 {
     /// Creates a new Oscilloscope.
     ///    
@@ -44,7 +44,7 @@ where
 
 impl<B> View for Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<ExtremaBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
 {
     fn element(&self) -> Option<&'static str> {
         Some("22-visualizer")

@@ -15,7 +15,7 @@ use std::{
 /// interval. It provides methods for setting the sample rate and duration, as
 /// well as enqueueing new values and retrieving the stored waveform data.
 ///
-/// For each pair `(T,T)` of samples that a ExtremaBuffer holds, the first
+/// For each pair `(T,T)` of samples that a WaveformBuffer holds, the first
 /// element is the local minimum, and the second is the local maximum within the
 /// respective time frame.
 ///
@@ -27,19 +27,19 @@ use std::{
 ///
 /// # Example
 ///
-/// Here's how to create a `ExtremaBuffer` with 512 samples, stored as f32
+/// Here's how to create a `WaveformBuffer` with 512 samples, stored as f32
 /// values. We'll provide a sample rate of 44.1 kHz and a length of 10 seconds.
 ///
 /// ```
-/// use plext::utils::ExtremaBuffer;
-/// let mut rb = ExtremaBuffer::<f32>::new(512, 10.0, 44100.);
+/// use plext::utils::WaveformBuffer;
+/// let mut rb = WaveformBuffer::<f32>::new(512, 10.0, 44100.);
 /// ```
 ///
 /// When we later push into this buffer, it will accumulate samples according to
 /// these restrictions. It will take (44100*10)/512 enqueued samples for a new
 /// pair of maximum and minimum values to be added to the buffer.
 #[derive(Clone, PartialEq, Default)]
-pub struct ExtremaBuffer<T> {
+pub struct WaveformBuffer<T> {
     buffer: RingBuffer<(T, T)>,
     // Minimum and maximum accumulators
     min_acc: T,
@@ -53,11 +53,11 @@ pub struct ExtremaBuffer<T> {
     t: f32,
 }
 
-impl<T> ExtremaBuffer<T>
+impl<T> WaveformBuffer<T>
 where
     T: Clone + Copy + Default + Debug + PartialOrd + Real,
 {
-    /// Creates a new `ExtremaBuffer` with the specified sample rate and
+    /// Creates a new `WaveformBuffer` with the specified sample rate and
     /// duration (in seconds).
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
@@ -128,7 +128,7 @@ where
 
 // TODO: Allow seperately enqueueing left / right channel data
 
-impl ExtremaBuffer<f32> {
+impl WaveformBuffer<f32> {
     /// Enqueues an entire [`Buffer`], mono-summing it if necessary.
     pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer) {
         for sample in buffer.iter_samples() {
@@ -139,7 +139,7 @@ impl ExtremaBuffer<f32> {
     }
 }
 
-impl<'a, T: Copy> IntoIterator for &'a ExtremaBuffer<T> {
+impl<'a, T: Copy> IntoIterator for &'a WaveformBuffer<T> {
     type Item = &'a (T, T);
     type IntoIter = Iter<'a, (T, T)>;
 
@@ -149,26 +149,26 @@ impl<'a, T: Copy> IntoIterator for &'a ExtremaBuffer<T> {
     }
 }
 
-impl<T: Debug + Copy> Debug for ExtremaBuffer<T> {
+impl<T: Debug + Copy> Debug for WaveformBuffer<T> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         self.buffer.fmt(f)
     }
 }
 
-impl<T> Index<usize> for ExtremaBuffer<T> {
+impl<T> Index<usize> for WaveformBuffer<T> {
     type Output = (T, T);
 
     fn index(&self, index: usize) -> &Self::Output {
         self.buffer.index(index)
     }
 }
-impl<T> IndexMut<usize> for ExtremaBuffer<T> {
+impl<T> IndexMut<usize> for WaveformBuffer<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.buffer.index_mut(index)
     }
 }
 
-impl<T: Default> Deref for ExtremaBuffer<T> {
+impl<T: Default> Deref for WaveformBuffer<T> {
     type Target = [(T, T)];
     /// Dereferences the underlying data, giving you direct access to it.
     ///
@@ -178,7 +178,7 @@ impl<T: Default> Deref for ExtremaBuffer<T> {
         self.buffer.deref()
     }
 }
-impl<T: Default> DerefMut for ExtremaBuffer<T> {
+impl<T: Default> DerefMut for WaveformBuffer<T> {
     /// Mutably dereferences the underlying data, giving you direct access to
     /// it.
     ///
