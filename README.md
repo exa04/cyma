@@ -19,7 +19,7 @@ added!
   - [ ] Peak meter
   - [x] Peak graph
   - [x] Oscilloscope
-  - [ ] Static waveform
+  - [x] Static waveform
 
 **Loudness Analysis**
   - [ ] Loudness meter

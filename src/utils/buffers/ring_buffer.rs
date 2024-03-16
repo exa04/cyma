@@ -164,19 +164,6 @@ impl<T: Debug + Copy> Debug for RingBuffer<T> {
     }
 }
 
-impl<T: Copy> IntoIterator for RingBuffer<T> {
-    type Item = T;
-    type IntoIter = IntoIter<T>;
-
-    /// Creates a consuming iterator from the ring buffer, moving it.
-    fn into_iter(self) -> Self::IntoIter {
-        IntoIter {
-            index: 0,
-            index_back: self.size,
-            ring_buffer: self,
-        }
-    }
-}
 impl<'a, T: Copy> IntoIterator for &'a RingBuffer<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -479,11 +466,11 @@ mod tests {
         rb.enqueue(2);
 
         // Do we still get our data in the correct order?
-        let mut iter = rb.clone().into_iter();
-        assert_eq!(iter.next(), Some(3));
-        assert_eq!(iter.next(), Some(8));
-        assert_eq!(iter.next(), Some(1));
-        assert_eq!(iter.next(), Some(2));
+        let mut iter = rb.into_iter();
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&8));
+        assert_eq!(iter.next(), Some(&1));
+        assert_eq!(iter.next(), Some(&2));
         // Do we still get `None` once we step out of bounds?
         assert_eq!(iter.next(), None);
     }
