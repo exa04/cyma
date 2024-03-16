@@ -73,7 +73,7 @@ where
     }
 
     /// Sets the size of the buffer and **clears** it.
-    pub fn set_size(self: &mut Self, size: usize) {
+    pub fn resize(self: &mut Self, size: usize) {
         if self.buffer.len() == size {
             return;
         };
