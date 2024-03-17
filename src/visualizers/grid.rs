@@ -80,7 +80,7 @@ impl View for Grid {
 
                 let t_delta = w / self.x_subdivisions;
 
-                for step in (0..self.x_subdivisions.ceil() as u32).map(|x| x as f32 * t_delta) {
+                for step in (1..self.x_subdivisions.ceil() as u32).map(|x| x as f32 * t_delta) {
                     path.move_to(x + w - step, y);
                     path.line_to(x + w - step, y + h);
                     path.close();
