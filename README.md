@@ -1,5 +1,8 @@
 # Plext
 
+[![Test](https://github.com/223230/plext/actions/workflows/test.yml/badge.svg)](https://github.com/223230/plext/actions/workflows/test.yml)
+[![Docs](https://github.com/223230/plext/actions/workflows/docs.yaml/badge.svg)](https://github.com/223230/plext/actions/workflows/docs.yaml)
+
 Views and associated data structures for plug-in UIs made using
 [nih-plug](https://github.com/robbert-vdh/nih-plug) and
 [VIZIA](https://github.com/vizia/vizia).
