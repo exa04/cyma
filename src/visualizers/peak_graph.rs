@@ -61,16 +61,16 @@ where
         let ring_buf = &(binding.lock().unwrap());
         let mut rb_iter = ring_buf.into_iter();
 
-        let mut peak = (amplitude_to_db(*(rb_iter.next().unwrap())))
-            .clamp(self.display_range.0, self.display_range.1);
-
-        peak -= self.display_range.0;
-        peak /= self.display_range.1 - self.display_range.0;
-
-        stroke.move_to(x, y + h * (1. - peak));
-
         let mut i = 0.;
         if self.scale_by_db {
+            let mut peak = (amplitude_to_db(*(rb_iter.next().unwrap())))
+                .clamp(self.display_range.0, self.display_range.1);
+
+            peak -= self.display_range.0;
+            peak /= self.display_range.1 - self.display_range.0;
+
+            stroke.move_to(x, y + h * (1. - peak));
+
             for p in rb_iter {
                 // Convert peak to decibels and clamp it in range
                 peak = (amplitude_to_db(*p)).clamp(self.display_range.0, self.display_range.1);
@@ -84,6 +84,14 @@ where
                 i += 1.;
             }
         } else {
+            let mut peak =
+                (*(rb_iter.next().unwrap())).clamp(self.display_range.0, self.display_range.1);
+
+            peak -= self.display_range.0;
+            peak /= self.display_range.1 - self.display_range.0;
+
+            stroke.move_to(x, y + h * (1. - peak));
+
             for peak in rb_iter {
                 // Clamp peak in range
                 let mut peak = (*peak).clamp(self.display_range.0, self.display_range.1);
