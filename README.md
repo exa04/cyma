@@ -15,6 +15,8 @@ added!
 
 ### 📊 Visualizers
 
+- [x] Grid backdrop
+
 **Peak/Waveform Analysis**
   - [ ] Peak meter
   - [x] Peak graph
