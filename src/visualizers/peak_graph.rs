@@ -56,47 +56,58 @@ where
         let line_width = cx.scale_factor();
 
         // Peak graph
-        canvas.fill_path(
-            &{
-                let mut path = vg::Path::new();
-                let binding = self.buffer.get(cx);
-                let ring_buf = &(binding.lock().unwrap());
+        let mut stroke = vg::Path::new();
+        let binding = self.buffer.get(cx);
+        let ring_buf = &(binding.lock().unwrap());
+        let mut rb_iter = ring_buf.into_iter();
 
-                path.move_to(x, y + h);
+        let mut peak = (amplitude_to_db(*(rb_iter.next().unwrap())))
+            .clamp(self.display_range.0, self.display_range.1);
 
-                let mut i = 0.;
-                if self.scale_by_db {
-                    for peak in ring_buf.into_iter() {
-                        // Convert peak to decibels and clamp it in range
-                        let mut peak = (amplitude_to_db(*peak))
-                            .clamp(self.display_range.0, self.display_range.1);
+        peak -= self.display_range.0;
+        peak /= self.display_range.1 - self.display_range.0;
 
-                        // Normalize peak's range
-                        peak -= self.display_range.0;
-                        peak /= self.display_range.1 - self.display_range.0;
+        stroke.move_to(x, y + h * (1. - peak));
 
-                        // Draw peak as a new point
-                        path.line_to(x + (w / ring_buf.len() as f32) * i, y + h * (1. - peak));
-                        i += 1.;
-                    }
-                } else {
-                    for peak in ring_buf.into_iter() {
-                        // Clamp peak in range
-                        let mut peak = (*peak).clamp(self.display_range.0, self.display_range.1);
+        let mut i = 0.;
+        if self.scale_by_db {
+            for p in rb_iter {
+                // Convert peak to decibels and clamp it in range
+                peak = (amplitude_to_db(*p)).clamp(self.display_range.0, self.display_range.1);
 
-                        // Normalize peak's range
-                        peak -= self.display_range.0;
-                        peak /= self.display_range.1 - self.display_range.0;
+                // Normalize peak's range
+                peak -= self.display_range.0;
+                peak /= self.display_range.1 - self.display_range.0;
 
-                        // Draw peak as a new point
-                        path.line_to(x + (w / ring_buf.len() as f32) * i, y + h * (1. - peak));
-                        i += 1.;
-                    }
-                }
-                path.line_to(x + w, y + h);
-                path.close();
-                path
-            },
+                // Draw peak as a new point
+                stroke.line_to(x + (w / ring_buf.len() as f32) * i, y + h * (1. - peak));
+                i += 1.;
+            }
+        } else {
+            for peak in rb_iter {
+                // Clamp peak in range
+                let mut peak = (*peak).clamp(self.display_range.0, self.display_range.1);
+
+                // Normalize peak's range
+                peak -= self.display_range.0;
+                peak /= self.display_range.1 - self.display_range.0;
+
+                // Draw peak as a new point
+                stroke.line_to(x + (w / ring_buf.len() as f32) * i, y + h * (1. - peak));
+                i += 1.;
+            }
+        }
+
+        let mut fill = stroke.clone();
+
+        fill.line_to(x + w, y + h);
+        fill.line_to(x, y + h);
+        fill.close();
+
+        canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
+
+        canvas.stroke_path(
+            &stroke,
             &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
         );
     }
