@@ -1,14 +1,16 @@
-# Plext
+<div align="center">
+  <h1>Plext</h1>
+</div>
+<div align="center">
+  <a href="https://github.com/223230/plext/actions/workflows/test.yml"><img src="https://github.com/223230/plext/actions/workflows/test.yml/badge.svg"></a>
+  <a href="https://github.com/223230/plext/actions/workflows/docs.yml"><img src="https://github.com/223230/plext/actions/workflows/docs.yaml/badge.svg"></a>
+</div>
+<br/>
+<div align="center">
+  Views and associated data structures for plug-in UIs made using <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> and <a href="https://github.com/vizia/vizia">VIZIA</a>.
+</div>
 
-[![Test](https://github.com/223230/plext/actions/workflows/test.yml/badge.svg)](https://github.com/223230/plext/actions/workflows/test.yml)
-[![Docs](https://github.com/223230/plext/actions/workflows/docs.yaml/badge.svg)](https://github.com/223230/plext/actions/workflows/docs.yaml)
-
-Views and associated data structures for plug-in UIs made using
-[nih-plug](https://github.com/robbert-vdh/nih-plug) and
-[VIZIA](https://github.com/vizia/vizia).
-
-Plext contains many views that you can use to quickly make good-looking plug-in
-UIs using VIZIA.
+<hr/>
 
 ## 🧰 What's (going to be) included
 
