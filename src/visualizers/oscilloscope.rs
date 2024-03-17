@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use nih_plug_vizia::vizia::{prelude::*, vg};
+use nih_plug_vizia::vizia::{prelude::*, vg, views::normalized_map::amplitude_to_db};
 
 use crate::utils::WaveformBuffer;
 
@@ -24,7 +24,8 @@ where
     B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
 {
     buffer: B,
-    max: f32,
+    display_range: (f32, f32),
+    scale_by_db: bool,
 }
 
 impl<B> Oscilloscope<B>
@@ -37,10 +38,16 @@ where
     /// need to write to it inside your plugin code, thread-safely send it to
     /// the editor thread, and then pass it into this oscilloscope. Which is
     /// also why it is behind an `Arc<Mutex>`.
-    pub fn new(cx: &mut Context, buffer: B, max: impl Res<f32>) -> Handle<Self> {
+    pub fn new(
+        cx: &mut Context,
+        buffer: B,
+        display_range: impl Res<(f32, f32)>,
+        scale_by_db: impl Res<bool>,
+    ) -> Handle<Self> {
         Self {
             buffer,
-            max: max.get_val(cx),
+            display_range: display_range.get_val(cx),
+            scale_by_db: scale_by_db.get_val(cx),
         }
         .build(cx, |_| {})
     }
@@ -61,44 +68,100 @@ where
         let w = bounds.w;
         let h = bounds.h;
 
-        // Waveform
-        canvas.fill_path(
-            &{
-                let mut path = vg::Path::new();
-                let binding = self.buffer.get(cx);
-                let ring_buf = &(binding.lock().unwrap());
+        if self.scale_by_db {
+            canvas.fill_path(
+                &{
+                    let mut path = vg::Path::new();
+                    let binding = self.buffer.get(cx);
+                    let ring_buf = &(binding.lock().unwrap());
 
-                path.move_to(x, y + h / 2.);
+                    path.move_to(x, y + h / 2.);
 
-                let mut i = 0.;
-                for v in ring_buf.into_iter() {
-                    // Clamp value to be in range
-                    let mut py = v.0.clamp(-self.max, self.max);
-                    // Normalize value
-                    py /= self.max;
+                    let mut i = 0.;
+                    for v in ring_buf.into_iter() {
+                        // Convert value to dB
+                        let mut py = amplitude_to_db(v.0.abs());
+                        // Clamp value to be in range
+                        py = py.clamp(self.display_range.0, self.display_range.1);
 
-                    path.line_to(
-                        x + (w / ring_buf.len() as f32) * i,
-                        y + (h / 2.) * (1. - py) + 1.,
-                    );
-                    i += 1.;
-                }
-                for v in ring_buf.into_iter().rev() {
-                    // Clamp value to be in range
-                    let mut py = v.1.clamp(-self.max, self.max);
-                    // Normalize value
-                    py /= self.max;
+                        // Normalize value
+                        py -= self.display_range.0;
+                        py /= self.display_range.1 - self.display_range.0;
+                        py *= v.0.signum();
 
-                    path.line_to(
-                        x + (w / ring_buf.len() as f32) * i,
-                        y + (h / 2.) * (1. - py) + 1.,
-                    );
-                    i -= 1.;
-                }
-                path.close();
-                path
-            },
-            &vg::Paint::color(cx.font_color().into()),
-        );
+                        path.line_to(
+                            x + (w / ring_buf.len() as f32) * i,
+                            y + (h / 2.) * (1. - py) + 1.,
+                        );
+                        i += 1.;
+                    }
+                    for v in ring_buf.into_iter().rev() {
+                        // Convert value to dB
+                        let mut py = amplitude_to_db(v.1.abs());
+                        // Clamp value to be in range
+                        py = py.clamp(self.display_range.0, self.display_range.1);
+
+                        // Normalize value
+                        py -= self.display_range.0;
+                        py /= self.display_range.1 - self.display_range.0;
+                        py *= v.1.signum();
+
+                        path.line_to(
+                            x + (w / ring_buf.len() as f32) * i,
+                            y + (h / 2.) * (1. - py) + 1.,
+                        );
+                        i -= 1.;
+                    }
+                    path.close();
+                    path
+                },
+                &vg::Paint::color(cx.font_color().into()),
+            );
+        } else {
+            canvas.fill_path(
+                &{
+                    let mut path = vg::Path::new();
+                    let binding = self.buffer.get(cx);
+                    let ring_buf = &(binding.lock().unwrap());
+
+                    path.move_to(x, y + h / 2.);
+
+                    let mut i = 0.;
+                    for v in ring_buf.into_iter() {
+                        // Clamp value to be in range
+                        let mut py = (v.0.abs()).clamp(self.display_range.0, self.display_range.1);
+
+                        // Normalize value
+                        py -= self.display_range.0;
+                        py /= self.display_range.1 - self.display_range.0;
+                        py *= v.0.signum();
+
+                        path.line_to(
+                            x + (w / ring_buf.len() as f32) * i,
+                            y + (h / 2.) * (1. - py) + 1.,
+                        );
+                        i += 1.;
+                    }
+                    for v in ring_buf.into_iter().rev() {
+                        // Clamp value to be in range
+                        let mut py = (v.1.abs()).clamp(self.display_range.0, self.display_range.1);
+
+                        // Normalize value
+                        py -= self.display_range.0;
+                        py /= self.display_range.1 - self.display_range.0;
+                        py *= v.1.signum();
+
+                        path.line_to(
+                            x + (w / ring_buf.len() as f32) * i,
+                            y + (h / 2.) * (1. - py) + 1.,
+                        );
+                        i -= 1.;
+                    }
+                    path.close();
+                    path
+                },
+                &vg::Paint::color(cx.font_color().into()),
+            );
+        }
     }
 }
