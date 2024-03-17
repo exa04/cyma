@@ -68,55 +68,104 @@ where
         let w = bounds.w;
         let h = bounds.h;
 
+        let mut fill = vg::Path::new();
+        let mut path_a = vg::Path::new();
+        let mut path_b = vg::Path::new();
+        let binding = self.buffer.get(cx);
+        let ring_buf = &(binding.lock().unwrap());
+        let mut rb_iter = ring_buf.into_iter();
+
+        let mut i = 1.;
+
         if self.scale_by_db {
-            canvas.fill_path(
-                &{
-                    let mut path = vg::Path::new();
-                    let binding = self.buffer.get(cx);
-                    let ring_buf = &(binding.lock().unwrap());
+            // Get first value to move_to it
+            let v = rb_iter.next().unwrap();
 
-                    path.move_to(x, y + h / 2.);
+            // Convert value to dB
+            let mut py = amplitude_to_db(v.0.abs());
 
-                    let mut i = 0.;
-                    for v in ring_buf.into_iter() {
-                        // Convert value to dB
-                        let mut py = amplitude_to_db(v.0.abs());
-                        // Clamp value to be in range
-                        py = py.clamp(self.display_range.0, self.display_range.1);
+            // Clamp value to be in range
+            py = py.clamp(self.display_range.0, self.display_range.1);
 
-                        // Normalize value
-                        py -= self.display_range.0;
-                        py /= self.display_range.1 - self.display_range.0;
-                        py *= v.0.signum();
+            // Normalize value
+            py -= self.display_range.0;
+            py /= self.display_range.1 - self.display_range.0;
+            py *= v.0.signum();
 
-                        path.line_to(
-                            x + (w / ring_buf.len() as f32) * i,
-                            y + (h / 2.) * (1. - py) + 1.,
-                        );
-                        i += 1.;
-                    }
-                    for v in ring_buf.into_iter().rev() {
-                        // Convert value to dB
-                        let mut py = amplitude_to_db(v.1.abs());
-                        // Clamp value to be in range
-                        py = py.clamp(self.display_range.0, self.display_range.1);
+            fill.move_to(x, y + (h / 2.) * (1. - py) + 1.);
+            path_a.move_to(x, y + (h / 2.) * (1. - py) + 1.);
 
-                        // Normalize value
-                        py -= self.display_range.0;
-                        py /= self.display_range.1 - self.display_range.0;
-                        py *= v.1.signum();
+            for v in rb_iter {
+                // Convert value to dB
+                py = amplitude_to_db(v.0.abs());
+                // Clamp value to be in range
+                py = py.clamp(self.display_range.0, self.display_range.1);
 
-                        path.line_to(
-                            x + (w / ring_buf.len() as f32) * i,
-                            y + (h / 2.) * (1. - py) + 1.,
-                        );
-                        i -= 1.;
-                    }
-                    path.close();
-                    path
-                },
-                &vg::Paint::color(cx.font_color().into()),
-            );
+                // Normalize value
+                py -= self.display_range.0;
+                py /= self.display_range.1 - self.display_range.0;
+                py *= v.0.signum();
+
+                fill.line_to(
+                    x + (w / ring_buf.len() as f32) * i,
+                    y + (h / 2.) * (1. - py) + 1.,
+                );
+                path_a.line_to(
+                    x + (w / ring_buf.len() as f32) * i,
+                    y + (h / 2.) * (1. - py) + 1.,
+                );
+
+                i += 1.;
+            }
+
+            i -= 2.;
+
+            let mut rb_iter = ring_buf.into_iter().rev();
+
+            // Get last value to move_to it
+            let v = rb_iter.next().unwrap();
+
+            // Convert value to dB
+            let mut py = amplitude_to_db(v.0.abs());
+
+            // Clamp value to be in range
+            py = py.clamp(self.display_range.0, self.display_range.1);
+
+            // Normalize value
+            py -= self.display_range.0;
+            py /= self.display_range.1 - self.display_range.0;
+            py *= v.0.signum();
+
+            fill.line_to(x + w, y + (h / 2.) * (1. - py) + 1.);
+            path_b.move_to(x + w, y + (h / 2.) * (1. - py) + 1.);
+
+            for v in rb_iter {
+                // Convert value to dB
+                py = amplitude_to_db(v.1.abs());
+                // Clamp value to be in range
+                py = py.clamp(self.display_range.0, self.display_range.1);
+
+                // Normalize value
+                py -= self.display_range.0;
+                py /= self.display_range.1 - self.display_range.0;
+                py *= v.1.signum();
+
+                fill.line_to(
+                    x + (w / ring_buf.len() as f32) * i,
+                    y + (h / 2.) * (1. - py) + 1.,
+                );
+                path_b.line_to(
+                    x + (w / ring_buf.len() as f32) * i,
+                    y + (h / 2.) * (1. - py) + 1.,
+                );
+
+                i -= 1.;
+            }
+
+            fill.close();
+            canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
+            canvas.stroke_path(&fill, &vg::Paint::color(cx.font_color().into()));
+            canvas.stroke_path(&fill, &vg::Paint::color(cx.font_color().into()));
         } else {
             canvas.fill_path(
                 &{
