@@ -70,3 +70,4 @@ added!
 - Oscilloscope *(needs review)*
 - PeakGraph
 - Waveform
+- Grid

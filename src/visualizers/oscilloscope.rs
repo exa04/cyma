@@ -24,6 +24,7 @@ where
     B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
 {
     buffer: B,
+    max: f32,
 }
 
 impl<B> Oscilloscope<B>
@@ -36,8 +37,12 @@ where
     /// need to write to it inside your plugin code, thread-safely send it to
     /// the editor thread, and then pass it into this oscilloscope. Which is
     /// also why it is behind an `Arc<Mutex>`.
-    pub fn new(cx: &mut Context, buffer: B) -> Handle<Self> {
-        Self { buffer }.build(cx, |_| {})
+    pub fn new(cx: &mut Context, buffer: B, max: impl Res<f32>) -> Handle<Self> {
+        Self {
+            buffer,
+            max: max.get_val(cx),
+        }
+        .build(cx, |_| {})
     }
 }
 
@@ -67,18 +72,28 @@ where
 
                 let mut i = 0.;
                 for v in ring_buf.into_iter() {
+                    // Clamp value to be in range
+                    let mut py = v.0.clamp(-self.max, self.max);
+                    // Normalize value
+                    py /= self.max;
+
                     path.line_to(
                         x + (w / ring_buf.len() as f32) * i,
-                        y + (h / 2.) * (1. - v.0.clamp(-1., 1.)) + 1.,
+                        y + (h / 2.) * (1. - py) + 1.,
                     );
                     i += 1.;
                 }
                 for v in ring_buf.into_iter().rev() {
-                    i -= 1.;
+                    // Clamp value to be in range
+                    let mut py = v.1.clamp(-self.max, self.max);
+                    // Normalize value
+                    py /= self.max;
+
                     path.line_to(
                         x + (w / ring_buf.len() as f32) * i,
-                        y + (h / 2.) * (1. - v.1.clamp(-1., 1.)) + 1.,
+                        y + (h / 2.) * (1. - py) + 1.,
                     );
+                    i -= 1.;
                 }
                 path.close();
                 path
