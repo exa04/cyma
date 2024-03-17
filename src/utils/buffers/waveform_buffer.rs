@@ -126,15 +126,22 @@ where
     }
 }
 
-// TODO: Allow seperately enqueueing left / right channel data
-
 impl WaveformBuffer<f32> {
-    /// Enqueues an entire [`Buffer`], mono-summing it if necessary.
-    pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer) {
-        for sample in buffer.iter_samples() {
-            self.enqueue(
-                (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
-            );
+    /// Enqueues an entire [`Buffer`], mono-summing it if no channel is specified.
+    pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer, channel: Option<usize>) {
+        match channel {
+            Some(channel) => {
+                for sample in buffer.as_slice()[channel].into_iter() {
+                    self.enqueue(*sample);
+                }
+            }
+            None => {
+                for sample in buffer.iter_samples() {
+                    self.enqueue(
+                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
+                    );
+                }
+            }
         }
     }
 }
