@@ -44,6 +44,7 @@ impl View for Grid {
 
         let line_width = cx.scale_factor();
 
+        // Horizontal grid lines
         canvas.stroke_path(
             &{
                 let mut path = vg::Path::new();
@@ -60,6 +61,28 @@ impl View for Grid {
                     path.move_to(x, y + h * (1. - y_line));
                     path.line_to(x + w, y + h * (1. - y_line));
 
+                    path.close();
+                }
+
+                path
+            },
+            &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
+        );
+
+        if self.x_subdivisions == 0.0 {
+            return;
+        }
+
+        // Horizontal grid lines
+        canvas.stroke_path(
+            &{
+                let mut path = vg::Path::new();
+
+                let t_delta = w / self.x_subdivisions;
+
+                for step in (0..self.x_subdivisions.ceil() as u32).map(|x| x as f32 * t_delta) {
+                    path.move_to(x + w - step, y);
+                    path.line_to(x + w - step, y + h);
                     path.close();
                 }
 
