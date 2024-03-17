@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::utils::PeakBuffer;
 use nih_plug_vizia::vizia::{
-    binding::{Lens, LensExt},
+    binding::{Lens, LensExt, Res},
     context::{Context, DrawContext},
     vg,
     view::{Canvas, Handle, View},
@@ -10,38 +10,37 @@ use nih_plug_vizia::vizia::{
 };
 
 /// A graph showing real-time peak information.
-pub struct PeakGraph<B, R, D>
+pub struct PeakGraph<B>
 where
     B: Lens<Target = Arc<Mutex<PeakBuffer<f32>>>>,
-    R: Lens<Target = (f32, f32)>,
-    D: Lens<Target = bool>,
 {
     buffer: B,
-    display_range: R,
-    scale_by_db: D,
+    display_range: (f32, f32),
+    scale_by_db: bool,
 }
 
-impl<B, R, D> PeakGraph<B, R, D>
+impl<B> PeakGraph<B>
 where
     B: Lens<Target = Arc<Mutex<PeakBuffer<f32>>>>,
-    R: Lens<Target = (f32, f32)>,
-    D: Lens<Target = bool>,
 {
-    pub fn new(cx: &mut Context, buffer: B, display_range: R, scale_by_db: D) -> Handle<Self> {
+    pub fn new(
+        cx: &mut Context,
+        buffer: B,
+        display_range: impl Res<(f32, f32)>,
+        scale_by_db: impl Res<bool>,
+    ) -> Handle<Self> {
         Self {
             buffer,
-            display_range,
-            scale_by_db,
+            display_range: display_range.get_val(cx),
+            scale_by_db: scale_by_db.get_val(cx),
         }
         .build(cx, |_| {})
     }
 }
 
-impl<B, R, D> View for PeakGraph<B, R, D>
+impl<B> View for PeakGraph<B>
 where
     B: Lens<Target = Arc<Mutex<PeakBuffer<f32>>>>,
-    R: Lens<Target = (f32, f32)>,
-    D: Lens<Target = bool>,
 {
     fn element(&self) -> Option<&'static str> {
         Some("22-visualizer")
@@ -62,35 +61,35 @@ where
                 let mut path = vg::Path::new();
                 let binding = self.buffer.get(cx);
                 let ring_buf = &(binding.lock().unwrap());
-                let range = self.display_range.get(cx);
 
                 path.move_to(x, y + h);
 
                 let mut i = 0.;
-                if self.scale_by_db.get(cx) {
-                    for v in ring_buf.into_iter() {
-                        path.line_to(
-                            x + (w / ring_buf.len() as f32) * i,
-                            y + h
-                                * ({
-                                    // Convert to decibels, clamp and then transform to be between 1. and 0.
-                                    1. - ((amplitude_to_db(*v)).clamp(range.0, range.1) - range.0)
-                                        / (range.1 - range.0)
-                                }),
-                        );
+                if self.scale_by_db {
+                    for peak in ring_buf.into_iter() {
+                        // Convert peak to decibels and clamp it in range
+                        let mut peak = (amplitude_to_db(*peak))
+                            .clamp(self.display_range.0, self.display_range.1);
+
+                        // Normalize peak's range
+                        peak -= self.display_range.0;
+                        peak /= self.display_range.1 - self.display_range.0;
+
+                        // Draw peak as a new point
+                        path.line_to(x + (w / ring_buf.len() as f32) * i, y + h * (1. - peak));
                         i += 1.;
                     }
                 } else {
-                    for v in ring_buf.into_iter() {
-                        path.line_to(
-                            x + (w / ring_buf.len() as f32) * i,
-                            y + h
-                                * ({
-                                    // Clamp  and then transform to be between 1. and 0.
-                                    1. - ((*v).clamp(range.0, range.1) - range.0)
-                                        / (range.1 - range.0)
-                                }),
-                        );
+                    for peak in ring_buf.into_iter() {
+                        // Clamp peak in range
+                        let mut peak = (*peak).clamp(self.display_range.0, self.display_range.1);
+
+                        // Normalize peak's range
+                        peak -= self.display_range.0;
+                        peak /= self.display_range.1 - self.display_range.0;
+
+                        // Draw peak as a new point
+                        path.line_to(x + (w / ring_buf.len() as f32) * i, y + h * (1. - peak));
                         i += 1.;
                     }
                 }
