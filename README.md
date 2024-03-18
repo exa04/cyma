@@ -25,6 +25,36 @@ visualizers, allowing you to easily build plug-in UIs that are performant.
 
 Read the <a href="https://223230.github.io/cyma/">docs</a> (incomplete)
 
+## ❓ Example
+
+Here's how to create a basic oscilloscope with a grid background.
+
+![Semi-transparent oscilloscope graph with a grid behind it](doc/example.png)
+
+```rust
+fn oscilloscope(cx: &mut Context) {
+    ZStack::new(cx, |cx| {
+        Grid::new(cx, (-1.2, 1.2), 10.0, vec![0.0, 0.5, -0.5, 1.0, -1.0])
+            .color(Color::rgb(60, 60, 60));
+        Oscilloscope::new(cx, Data::oscilloscope_buffer, (0., 1.2), false)
+            .color(Color::rgba(0, 0, 0, 0))
+            .background_color(Color::rgba(255, 255, 255, 120));
+    })
+    .border_color(Color::rgb(80, 80, 80))
+    .border_width(Pixels(1.))
+    .background_color(Color::rgb(16, 16, 16));
+}
+```
+
+Here, `Data::oscilloscope_buffer` is an `Arc<Mutex<WaveformBuffer>>`, a special
+buffer that allows for your audio to be sent to the `Oscilloscope` in a much
+smaller package, while retaining peak information. In the above screenshot, the
+buffer was configured to be 512 samples long, and it represents 10 seconds of
+audio at 44.1 kHz.
+
+It's very plug-and-play, you only need to call `enqueue_buffer()` in your
+plugin's process function to use it!
+
 ## 🧰 What's included
 
 Check out [this](https://github.com/223230/cyma/milestone/1) milestone to see
