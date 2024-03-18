@@ -13,6 +13,7 @@
 > [!CAUTION]
 > **Don't use this in production!** This library is *very* early in development
 > and a stable release is yet to be made. Expect frequent breaking changes.
+> Wanna contribute? [Read this.](#🙋-contributing)
 
 <hr/>
 
@@ -50,7 +51,7 @@ feature request so it can be added!
 
 ## 🍔 Composing views
 
-Plext's most powerful feature is composability.
+A core feature of plext is composability.
 
 For example, by combining views such as the `Grid`, `UnitRuler`, and
 `PeakGraph`, you can make this real-time peak analyzer that you can style
