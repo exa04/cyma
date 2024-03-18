@@ -1,3 +1,7 @@
+> [!CAUTION]
+> **Don't use this in production!** This library is *very* early in development
+> and a stable release is yet to be made. Expect frequent breaking changes.
+
 <div align="center">
   <h1>Plext</h1>
 </div>
@@ -12,69 +16,27 @@
 
 <hr/>
 
-## 🧰 What's (going to be) included
+## 🧰 What's included
 
-Consider this a "roadmap" or to-do list. Currently, only the checked items are
-included. Do you think something's missing? File a feature request so it can be
-added!
+Check out [this](https://github.com/223230/plext/milestone/1) milestone to see
+what views will eventually be added. Do you think something's missing? File a
+feature request so it can be added!
 
 ### 📊 Visualizers
 
 **General/Utility**
-- [x] Grid backdrop
+  - Grid backdrop
 
 **Peak/Waveform Analysis**
-  - [ ] Peak meter
-  - [x] Peak graph
-  - [x] Oscilloscope
-  - [x] Static waveform
-
-**Loudness Analysis**
-  - [ ] Loudness meter
-  - [ ] Loudness graph
-
-**Stereo Monitoring**
-  - [ ] Stereo monitor
-  - [ ] Spectral stereo monitor
-
-**Spectral Analysis**
-  - [ ] Spectrogram
-  - [ ] Ceptral / Spectral envelope
+  - Peak graph
+  - Oscilloscope
+  - Static waveform
 
 ### 🎛️ Controls
 
-**Primitive Controls**
-  - [ ] Button
-  - [ ] Toggle button
-  - [ ] Switch
-  - [ ] Drop-down menu
-
-**Ranged Inputs**
-  - [ ] Knob
-  - [ ] Slider
-  - [ ] Overlay Slider
-  - [ ] XY-Pad
-
-**Visual Editors**
-  - [ ] Envelope editor
-  - [ ] Filter display / editor
-  - [ ] EQ
-
 ### 🛠️ Utils
 
-- **RingBuffer** - A generic circular buffer
-- **WaveformBuffer** - A buffer for waveform analysis
-- **PeakBuffer** - A buffer for peak analysis
-
-## 📃 Needing documentation
-
-**utils**
-- RingBuffer *(needs review)*
-- WaveformBuffer *(needs review)*
-- PeakBuffer
-
-**visualizers**
-- Oscilloscope *(needs review)*
-- PeakGraph
-- Waveform
-- Grid
+**Buffers**
+  - **RingBuffer** - A generic circular buffer
+  - **WaveformBuffer** - A buffer for waveform analysis
+  - **PeakBuffer** - A buffer for peak analysis
