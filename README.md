@@ -1,4 +1,5 @@
 <div align="center">
+  <img src="doc/logo.svg">
   <h1>Cyma</h1>
 </div>
 <div align="center">
