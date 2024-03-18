@@ -16,6 +16,11 @@
 
 <hr/>
 
+## Overview
+
+**Plext** is a collection of flexible, composable views that you can use to make
+any plug-in UI with ease. Here's an example:
+
 ## 🧰 What's included
 
 Check out [this](https://github.com/223230/plext/milestone/1) milestone to see
@@ -41,3 +46,55 @@ feature request so it can be added!
   - **RingBuffer** - A generic circular buffer
   - **WaveformBuffer** - A buffer for waveform analysis
   - **PeakBuffer** - A buffer for peak analysis
+
+## 🍔 Composing views
+
+Plext's most powerful feature is composability.
+
+For example, by combining views such as the `Grid`, `UnitRuler`, and
+`PeakGraph`, you can make this real-time peak analyzer that you can style
+however you want.
+
+![Peak visualizer](doc/composability_demo.png)
+
+```rust
+fn peak_graph(cx: &mut Context) {
+    HStack::new(cx, |cx| {
+        ZStack::new(cx, |cx| {
+            Grid::new(
+                cx,
+                (-32.0, 8.0),
+                0.0,
+                vec![6.0, 0.0, -6.0, -12.0, -18.0, -24.0, -30.0],
+            )
+            .color(Color::rgb(60, 60, 60));
+
+            PeakGraph::new(cx, Data::peak_buffer, (-32.0, 8.0), true)
+                .color(Color::rgba(255, 255, 255, 160))
+                .background_color(Color::rgba(255, 255, 255, 60));
+        })
+        .border_color(Color::rgb(80, 80, 80))
+        .border_width(Pixels(1.))
+        .background_color(Color::rgb(16, 16, 16));
+
+        UnitRuler::new(
+            cx,
+            (-32.0, 8.0),
+            vec![
+                (6.0, "6db"),
+                (0.0, "0db"),
+                (-6.0, "-6db"),
+                (-12.0, "-12db"),
+                (-18.0, "-18db"),
+                (-24.0, "-24db"),
+                (-30.0, "-30db"),
+            ],
+            Orientation::Vertical,
+        )
+        .font_size(12.)
+        .color(Color::rgb(160, 160, 160))
+        .width(Pixels(32.));
+    })
+    .col_between(Pixels(8.));
+}
+```
