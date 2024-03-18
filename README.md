@@ -7,13 +7,13 @@
 </div>
 <br/>
 <div align="center">
-  Views and associated data structures for plug-in UIs made using <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> and <a href="https://github.com/vizia/vizia">VIZIA</a>.
+  Composable views and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
 </div>
 
+<hr/>
+
 > [!CAUTION]
-> **Don't use this in production!** This library is *very* early in development
-> and a stable release is yet to be made. Expect frequent breaking changes.
-> Wanna contribute? [Read this.](#🙋-contributing)
+> **Don't use this library in production!** It is *very* early in development and a stable release is yet to be made. If you want to use it, expect frequent breaking changes. Wanna contribute? [Read this.](#🙋-contributing)
 
 <hr/>
 
@@ -22,6 +22,8 @@
 Cyma is a collection of flexible, composable views that you can use to make any
 plug-in UI with ease. It uses various custom ring buffers for real-time
 visualizers, allowing you to easily build plug-in UIs that are performant.
+
+Read the <a href="https://223230.github.io/cyma/">docs</a> (incomplete)
 
 ## 🧰 What's included
 
