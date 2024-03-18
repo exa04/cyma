@@ -16,10 +16,11 @@
 
 <hr/>
 
-## Overview
+## ✨ Overview
 
-**Plext** is a collection of flexible, composable views that you can use to make
-any plug-in UI with ease. Here's an example:
+Plext is a collection of flexible, composable views that you can use to make any
+plug-in UI with ease. It uses various custom ring buffers for real-time
+visualizers, allowing you to easily build plug-in UIs that are performant.
 
 ## 🧰 What's included
 
