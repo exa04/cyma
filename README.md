@@ -1,7 +1,3 @@
-> [!CAUTION]
-> **Don't use this in production!** This library is *very* early in development
-> and a stable release is yet to be made. Expect frequent breaking changes.
-
 <div align="center">
   <h1>Plext</h1>
 </div>
@@ -13,6 +9,10 @@
 <div align="center">
   Views and associated data structures for plug-in UIs made using <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> and <a href="https://github.com/vizia/vizia">VIZIA</a>.
 </div>
+
+> [!CAUTION]
+> **Don't use this in production!** This library is *very* early in development
+> and a stable release is yet to be made. Expect frequent breaking changes.
 
 <hr/>
 
