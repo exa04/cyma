@@ -25,6 +25,32 @@ visualizers, allowing you to easily build plug-in UIs that are performant.
 
 Read the <a href="https://223230.github.io/cyma/">docs</a> (incomplete)
 
+## 🧰 What's included
+
+Check out [this](https://github.com/223230/cyma/milestone/1) milestone to see
+what views will eventually be added. Do you think something's missing? File a
+feature request so it can be added!
+
+### 📊 Visualizers
+
+**General/Utility**
+  - Grid backdrop
+  - Unit ruler
+
+**Peak/Waveform Analysis**
+  - Peak graph
+  - Oscilloscope
+  - Static waveform
+
+### 🎛️ Controls
+
+### 🛠️ Utils
+
+**Buffers**
+  - **RingBuffer** - A generic circular buffer
+  - **WaveformBuffer** - A buffer for waveform analysis
+  - **PeakBuffer** - A buffer for peak analysis
+
 ## ❓ Example
 
 Here's how to create a basic oscilloscope with a grid background.
@@ -54,32 +80,6 @@ audio at 44.1 kHz.
 
 It's very plug-and-play, you only need to call `enqueue_buffer()` in your
 plugin's process function to use it!
-
-## 🧰 What's included
-
-Check out [this](https://github.com/223230/cyma/milestone/1) milestone to see
-what views will eventually be added. Do you think something's missing? File a
-feature request so it can be added!
-
-### 📊 Visualizers
-
-**General/Utility**
-  - Grid backdrop
-  - Unit ruler
-
-**Peak/Waveform Analysis**
-  - Peak graph
-  - Oscilloscope
-  - Static waveform
-
-### 🎛️ Controls
-
-### 🛠️ Utils
-
-**Buffers**
-  - **RingBuffer** - A generic circular buffer
-  - **WaveformBuffer** - A buffer for waveform analysis
-  - **PeakBuffer** - A buffer for peak analysis
 
 ## 🍔 Composing views
 
