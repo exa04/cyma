@@ -98,3 +98,14 @@ fn peak_graph(cx: &mut Context) {
     .col_between(Pixels(8.));
 }
 ```
+
+## 🙋 Contributing
+
+This project is in a really early stage, which is why I won't be accepting code
+contributions just yet. If you want to contribute, you can feel free to play
+around with it and report any bugs, glitches, or other oddities by filing an
+[issue](https://github.com/223230/plext/issues).
+
+## 📃 License
+
+This project is licensed under the [MPL](LICENSE).
