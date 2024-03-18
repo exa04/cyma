@@ -4,6 +4,7 @@
 <div align="center">
   <a href="https://github.com/223230/cyma/actions/workflows/test.yml"><img src="https://github.com/223230/cyma/actions/workflows/test.yml/badge.svg"></a>
   <a href="https://github.com/223230/cyma/actions/workflows/docs.yml"><img src="https://github.com/223230/cyma/actions/workflows/docs.yaml/badge.svg"></a>
+  <a href="https://github.com/223230/cyma/milestone/1"><img src="https://img.shields.io/github/milestones/progress-percent/223230/cyma/1"></a>
 </div>
 <br/>
 <div align="center">
