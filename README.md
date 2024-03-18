@@ -1,9 +1,9 @@
 <div align="center">
-  <h1>Plext</h1>
+  <h1>Cyma</h1>
 </div>
 <div align="center">
-  <a href="https://github.com/223230/plext/actions/workflows/test.yml"><img src="https://github.com/223230/plext/actions/workflows/test.yml/badge.svg"></a>
-  <a href="https://github.com/223230/plext/actions/workflows/docs.yml"><img src="https://github.com/223230/plext/actions/workflows/docs.yaml/badge.svg"></a>
+  <a href="https://github.com/223230/cyma/actions/workflows/test.yml"><img src="https://github.com/223230/cyma/actions/workflows/test.yml/badge.svg"></a>
+  <a href="https://github.com/223230/cyma/actions/workflows/docs.yml"><img src="https://github.com/223230/cyma/actions/workflows/docs.yaml/badge.svg"></a>
 </div>
 <br/>
 <div align="center">
@@ -19,13 +19,13 @@
 
 ## ✨ Overview
 
-Plext is a collection of flexible, composable views that you can use to make any
+Cyma is a collection of flexible, composable views that you can use to make any
 plug-in UI with ease. It uses various custom ring buffers for real-time
 visualizers, allowing you to easily build plug-in UIs that are performant.
 
 ## 🧰 What's included
 
-Check out [this](https://github.com/223230/plext/milestone/1) milestone to see
+Check out [this](https://github.com/223230/cyma/milestone/1) milestone to see
 what views will eventually be added. Do you think something's missing? File a
 feature request so it can be added!
 
@@ -51,7 +51,7 @@ feature request so it can be added!
 
 ## 🍔 Composing views
 
-A core feature of plext is composability.
+A core feature of Cyma is composability.
 
 For example, by combining views such as the `Grid`, `UnitRuler`, and
 `PeakGraph`, you can make this real-time peak analyzer that you can style
@@ -106,7 +106,7 @@ fn peak_graph(cx: &mut Context) {
 This project is in a really early stage, which is why I won't be accepting code
 contributions just yet. If you want to contribute, you can feel free to play
 around with it and report any bugs, glitches, or other oddities by filing an
-[issue](https://github.com/223230/plext/issues).
+[issue](https://github.com/223230/cyma/issues).
 
 ## 📃 License
 

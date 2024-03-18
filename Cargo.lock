@@ -820,6 +820,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cyma"
+version = "0.1.0"
+dependencies = [
+ "nih_plug",
+ "nih_plug_vizia",
+ "num-traits",
+ "rand 0.8.5",
+]
+
+[[package]]
 name = "deranged"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2123,16 +2133,6 @@ name = "pkg-config"
 version = "0.3.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2900ede94e305130c13ddd391e0ab7cbaeb783945ae07a279c268cb05109c6cb"
-
-[[package]]
-name = "plext"
-version = "0.1.0"
-dependencies = [
- "nih_plug",
- "nih_plug_vizia",
- "num-traits",
- "rand 0.8.5",
-]
 
 [[package]]
 name = "png"

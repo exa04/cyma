@@ -17,7 +17,7 @@ use std::ops::{Deref, DerefMut, Index, IndexMut};
 /// # Example
 ///
 /// ```
-/// use plext::utils::RingBuffer;
+/// use cyma::utils::RingBuffer;
 ///
 /// let mut rb = RingBuffer::<i32>::new(4);
 ///
@@ -52,7 +52,7 @@ use std::ops::{Deref, DerefMut, Index, IndexMut};
 /// internal order of all elements.
 ///
 /// ```
-/// use plext::utils::RingBuffer;
+/// use cyma::utils::RingBuffer;
 ///
 /// let mut rb = RingBuffer::<i32>::new(4);
 ///

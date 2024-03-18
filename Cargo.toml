@@ -1,5 +1,5 @@
 [package]
-name = "plext"
+name = "cyma"
 version = "0.1.0"
 edition = "2021"
 description = "UI widgets and other utilities for audio plugins using vizia"

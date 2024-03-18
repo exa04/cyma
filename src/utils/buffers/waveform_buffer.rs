@@ -31,7 +31,7 @@ use std::{
 /// values. We'll provide a sample rate of 44.1 kHz and a length of 10 seconds.
 ///
 /// ```
-/// use plext::utils::WaveformBuffer;
+/// use cyma::utils::WaveformBuffer;
 /// let mut rb = WaveformBuffer::<f32>::new(512, 10.0, 44100.);
 /// ```
 ///
