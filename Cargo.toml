@@ -2,7 +2,7 @@
 name = "cyma"
 version = "0.1.0"
 edition = "2021"
-description = "UI widgets and other utilities for audio plugins using vizia"
+description = "Composable views and associated data structures for nih-plug UIs made using VIZIA"
 
 [dependencies]
 nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
