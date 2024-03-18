@@ -26,6 +26,7 @@ feature request so it can be added!
 
 **General/Utility**
   - Grid backdrop
+  - Unit ruler
 
 **Peak/Waveform Analysis**
   - Peak graph
