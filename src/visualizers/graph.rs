@@ -1,15 +1,15 @@
-use len_trait::len::Len;
-use std::{
-    ops::Index,
-    sync::{Arc, Mutex},
-};
+use crate::utils::ValueScaling;
 
+use len_trait::len::Len;
 use nih_plug_vizia::vizia::{
     binding::{Lens, LensExt, Res},
     context::{Context, DrawContext},
     vg,
     view::{Canvas, Handle, View},
-    views::normalized_map::amplitude_to_db,
+};
+use std::{
+    ops::Index,
+    sync::{Arc, Mutex},
 };
 
 /// A real-time graph displaying information that is stored inside a iterable
@@ -21,7 +21,7 @@ where
 {
     buffer: L,
     display_range: (f32, f32),
-    scale_by_db: bool,
+    scaling: ValueScaling,
 }
 
 impl<L, I> Graph<L, I>
@@ -33,12 +33,12 @@ where
         cx: &mut Context,
         buffer: L,
         display_range: impl Res<(f32, f32)>,
-        scale_by_db: impl Res<bool>,
+        scaling: impl Res<ValueScaling>,
     ) -> Handle<Self> {
         Self {
             buffer,
             display_range: display_range.get_val(cx),
-            scale_by_db: scale_by_db.get_val(cx),
+            scaling: scaling.get_val(cx),
         }
         .build(cx, |_| {})
     }
@@ -62,62 +62,31 @@ where
 
         let line_width = cx.scale_factor();
 
-        // Peak graph
         let mut stroke = vg::Path::new();
         let binding = self.buffer.get(cx);
         let ring_buf = &(binding.lock().unwrap());
 
-        let mut i = 1;
+        let mut peak = self.scaling.value_to_normalized(
+            ring_buf[0],
+            self.display_range.0,
+            self.display_range.1,
+        );
 
-        if self.scale_by_db {
-            let mut peak =
-                (amplitude_to_db(ring_buf[0])).clamp(self.display_range.0, self.display_range.1);
+        stroke.move_to(x, y + h * (1. - peak));
 
-            peak -= self.display_range.0;
-            peak /= self.display_range.1 - self.display_range.0;
+        for i in 1..ring_buf.len() {
+            // Normalize peak value
+            peak = self.scaling.value_to_normalized(
+                ring_buf[i],
+                self.display_range.0,
+                self.display_range.1,
+            );
 
-            stroke.move_to(x, y + h * (1. - peak));
-
-            while i < ring_buf.len() {
-                // Convert peak to decibels and clamp it in range
-                peak = (amplitude_to_db(ring_buf[i]))
-                    .clamp(self.display_range.0, self.display_range.1);
-
-                // Normalize peak's range
-                peak -= self.display_range.0;
-                peak /= self.display_range.1 - self.display_range.0;
-
-                // Draw peak as a new point
-                stroke.line_to(
-                    x + (w / ring_buf.len() as f32) * i as f32,
-                    y + h * (1. - peak),
-                );
-                i += 1;
-            }
-        } else {
-            let mut peak =
-                (amplitude_to_db(ring_buf[0])).clamp(self.display_range.0, self.display_range.1);
-
-            peak -= self.display_range.0;
-            peak /= self.display_range.1 - self.display_range.0;
-
-            stroke.move_to(x, y + h * (1. - peak));
-
-            while i < ring_buf.len() {
-                // Clamp peak in range
-                let mut peak = ring_buf[i].clamp(self.display_range.0, self.display_range.1);
-
-                // Normalize peak's range
-                peak -= self.display_range.0;
-                peak /= self.display_range.1 - self.display_range.0;
-
-                // Draw peak as a new point
-                stroke.line_to(
-                    x + (w / ring_buf.len() as f32) * i as f32,
-                    y + h * (1. - peak),
-                );
-                i += 1;
-            }
+            // Draw peak as a new point
+            stroke.line_to(
+                x + (w / ring_buf.len() as f32) * i as f32,
+                y + h * (1. - peak),
+            );
         }
 
         let mut fill = stroke.clone();
