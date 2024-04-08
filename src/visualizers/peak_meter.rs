@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
@@ -61,28 +60,36 @@ where
             self.display_range.1,
         );
 
-        canvas.fill_path(
-            &{
-                let mut path = vg::Path::new();
-                match self.orientation {
-                    Orientation::Vertical => {
-                        path.move_to(x, y + h * (1. - level));
-                        path.line_to(x + w, y + h * (1. - level));
-                        path.line_to(x + w, y + h);
-                        path.line_to(x, y + h);
-                        path.close();
-                    }
-                    Orientation::Horizontal => {
-                        path.move_to(x, y);
-                        path.line_to(x + w * level, y);
-                        path.line_to(x + w * level, y + h);
-                        path.line_to(x, y + h);
-                        path.close();
-                    }
-                };
-                path
-            },
-            &vg::Paint::color(cx.background_color().into()),
-        )
+        let mut path = vg::Path::new();
+        match self.orientation {
+            Orientation::Vertical => {
+                path.move_to(x, y + h * (1. - level));
+                path.line_to(x + w, y + h * (1. - level));
+
+                let mut outline = path.clone();
+                outline.close();
+                canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
+
+                path.line_to(x + w, y + h);
+                path.line_to(x, y + h);
+                path.close();
+
+                canvas.fill_path(&path, &vg::Paint::color(cx.background_color().into()));
+            }
+            Orientation::Horizontal => {
+                path.move_to(x + w * level, y);
+                path.line_to(x + w * level, y + h);
+
+                let mut outline = path.clone();
+                outline.close();
+                canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
+
+                path.line_to(x, y + h);
+                path.line_to(x, y);
+                path.close();
+
+                canvas.fill_path(&path, &vg::Paint::color(cx.background_color().into()));
+            }
+        };
     }
 }
