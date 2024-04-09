@@ -1,13 +1,13 @@
 use num_traits::real::Real;
 use std::ops::{Index, IndexMut};
 
-use super::{Buffer, RingBuffer};
+use super::{RingBuffer, VisualizerBuffer};
 
 #[derive(Clone, Default)]
-pub struct PeakBuffer<T> {
-    buffer: RingBuffer<T>,
+pub struct PeakBuffer {
+    buffer: RingBuffer<f32>,
     // Minimum and maximum accumulators
-    max_acc: T,
+    max_acc: f32,
     // The gap between elements of the buffer in samples
     sample_delta: f32,
     // Used to calculate the sample_delta
@@ -17,12 +17,12 @@ pub struct PeakBuffer<T> {
     t: f32,
 }
 
-impl<T: Default + Copy> PeakBuffer<T> {
+impl PeakBuffer {
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
         Self {
-            buffer: RingBuffer::<T>::new(size),
-            max_acc: T::default(),
+            buffer: RingBuffer::<f32>::new(size),
+            max_acc: 0.,
             sample_delta,
             sample_rate,
             duration,
@@ -47,20 +47,38 @@ impl<T: Default + Copy> PeakBuffer<T> {
     }
 }
 
-impl<T> Buffer<T> for PeakBuffer<T>
-where
-    T: Clone + Copy + Default + PartialOrd + Real,
-{
-    fn enqueue(self: &mut Self, value: T) {
+impl VisualizerBuffer<f32> for PeakBuffer {
+    fn enqueue(self: &mut Self, value: f32) {
         let value = value.abs();
         self.t -= 1.0;
         if self.t < 0.0 {
             self.buffer.enqueue(self.max_acc);
             self.t += self.sample_delta;
-            self.max_acc = T::default();
+            self.max_acc = 0.;
         }
         if value > self.max_acc {
             self.max_acc = value
+        }
+    }
+
+    fn enqueue_buffer(
+        self: &mut Self,
+        buffer: &mut nih_plug::buffer::Buffer,
+        channel: Option<usize>,
+    ) {
+        match channel {
+            Some(channel) => {
+                for sample in buffer.as_slice()[channel].into_iter() {
+                    self.enqueue(*sample);
+                }
+            }
+            None => {
+                for sample in buffer.iter_samples() {
+                    self.enqueue(
+                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
+                    );
+                }
+            }
         }
     }
 
@@ -93,14 +111,14 @@ where
     }
 }
 
-impl<T> Index<usize> for PeakBuffer<T> {
-    type Output = T;
+impl Index<usize> for PeakBuffer {
+    type Output = f32;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.buffer.index(index)
     }
 }
-impl<T> IndexMut<usize> for PeakBuffer<T> {
+impl IndexMut<usize> for PeakBuffer {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.buffer.index_mut(index)
     }
@@ -108,13 +126,13 @@ impl<T> IndexMut<usize> for PeakBuffer<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::Buffer;
+    use crate::utils::VisualizerBuffer;
 
     use super::PeakBuffer;
 
     #[test]
     fn enqueue() {
-        let mut rb = PeakBuffer::<f32>::new(16, 4.0, 8.0);
+        let mut rb = PeakBuffer::new(16, 4.0, 8.0);
 
         rb.enqueue(2.);
         rb.enqueue(9.);

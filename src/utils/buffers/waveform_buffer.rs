@@ -1,12 +1,8 @@
 use crate::utils::ring_buffer::RingBuffer;
 
-use num_traits::real::Real;
-use std::{
-    fmt::Debug,
-    ops::{Index, IndexMut},
-};
+use std::ops::{Index, IndexMut};
 
-use super::Buffer;
+use super::VisualizerBuffer;
 
 /// A special type of ring buffer, intended for use in peak waveform analysis.
 ///
@@ -40,11 +36,11 @@ use super::Buffer;
 /// these restrictions. It will take (44100*10)/512 enqueued samples for a new
 /// pair of maximum and minimum values to be added to the buffer.
 #[derive(Clone, PartialEq, Default)]
-pub struct WaveformBuffer<T> {
-    buffer: RingBuffer<(T, T)>,
+pub struct WaveformBuffer {
+    buffer: RingBuffer<(f32, f32)>,
     // Minimum and maximum accumulators
-    min_acc: T,
-    max_acc: T,
+    min_acc: f32,
+    max_acc: f32,
     // The gap between elements of the buffer in samples
     sample_delta: f32,
     // Used to calculate the sample_delta
@@ -54,15 +50,15 @@ pub struct WaveformBuffer<T> {
     t: f32,
 }
 
-impl<T: Default + Copy + Real> WaveformBuffer<T> {
+impl WaveformBuffer {
     /// Creates a new `WaveformBuffer` with the specified sample rate and
     /// duration (in seconds).
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
         Self {
-            buffer: RingBuffer::<(T, T)>::new(size),
-            min_acc: T::max_value(),
-            max_acc: T::min_value(),
+            buffer: RingBuffer::<(f32, f32)>::new(size),
+            min_acc: f32::MAX,
+            max_acc: f32::MIN,
             sample_delta,
             sample_rate,
             duration,
@@ -88,26 +84,41 @@ impl<T: Default + Copy + Real> WaveformBuffer<T> {
     }
 }
 
-impl<T> Buffer<T> for WaveformBuffer<T>
-where
-    T: Clone + Copy + Default + Debug + PartialOrd + Real,
-{
-    /// Adds a new element of type `T` to the buffer.
-    ///
-    /// If the buffer is full, the oldest element is removed.
-    fn enqueue(self: &mut Self, value: T) {
+impl VisualizerBuffer<f32> for WaveformBuffer {
+    fn enqueue(self: &mut Self, value: f32) {
         self.t -= 1.0;
         if self.t < 0.0 {
             self.buffer.enqueue((self.min_acc, self.max_acc));
             self.t += self.sample_delta;
-            self.min_acc = T::max_value();
-            self.max_acc = T::min_value();
+            self.min_acc = f32::MAX;
+            self.max_acc = f32::MIN;
         }
         if value > self.max_acc {
             self.max_acc = value
         }
         if value < self.min_acc {
             self.min_acc = value
+        }
+    }
+
+    fn enqueue_buffer(
+        self: &mut Self,
+        buffer: &mut nih_plug::buffer::Buffer,
+        channel: Option<usize>,
+    ) {
+        match channel {
+            Some(channel) => {
+                for sample in buffer.as_slice()[channel].into_iter() {
+                    self.enqueue(*sample);
+                }
+            }
+            None => {
+                for sample in buffer.iter_samples() {
+                    self.enqueue(
+                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
+                    );
+                }
+            }
         }
     }
 
@@ -138,14 +149,14 @@ where
     }
 }
 
-impl<T> Index<usize> for WaveformBuffer<T> {
-    type Output = (T, T);
+impl Index<usize> for WaveformBuffer {
+    type Output = (f32, f32);
 
     fn index(&self, index: usize) -> &Self::Output {
         self.buffer.index(index)
     }
 }
-impl<T> IndexMut<usize> for WaveformBuffer<T> {
+impl IndexMut<usize> for WaveformBuffer {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.buffer.index_mut(index)
     }

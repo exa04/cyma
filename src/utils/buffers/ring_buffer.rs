@@ -1,8 +1,6 @@
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
-use super::Buffer;
-
 /// A buffer that stores elements of type `T` in a First-In-First-Out manner.
 ///
 /// The `RingBuffer` struct allows enqueueing new elements onto its tail. When
@@ -72,7 +70,7 @@ pub struct RingBuffer<T> {
     data: Vec<T>,
 }
 
-impl<T: Default + Clone> RingBuffer<T> {
+impl<T: Default + Copy> RingBuffer<T> {
     /// Constructs a new RingBuffer with the given size.
     pub fn new(size: usize) -> Self {
         Self {
@@ -81,14 +79,12 @@ impl<T: Default + Clone> RingBuffer<T> {
             data: vec![T::default(); size],
         }
     }
-}
 
-impl<T: Default + Copy> Buffer<T> for RingBuffer<T> {
     /// Shrinks the RingBuffer to the given size.
     ///
     /// The most recently enqueued elements are preserved. This operation keeps
     /// the order of the values intact.
-    fn shrink(self: &mut Self, size: usize) {
+    pub fn shrink(self: &mut Self, size: usize) {
         let mut data = vec![];
 
         if size <= self.head {
@@ -110,7 +106,7 @@ impl<T: Default + Copy> Buffer<T> for RingBuffer<T> {
     ///
     /// The extra space is filled with the default values for your data type
     /// (usually 0). This operation keeps the order of the values intact.
-    fn grow(self: &mut Self, size: usize) {
+    pub fn grow(self: &mut Self, size: usize) {
         let mut data = vec![];
 
         // Copy everything after the head
@@ -127,21 +123,37 @@ impl<T: Default + Copy> Buffer<T> for RingBuffer<T> {
         self.size = size;
     }
 
+    /// Resizes the buffer to the given size.
+    ///
+    /// Internally, this either calls [`shrink()`](`Buffer::shrink()`), or
+    /// [`grow()`](`Buffer::grow()`), depending on the desired size.
+    fn resize(self: &mut Self, size: usize) {
+        if size == self.len() {
+            return;
+        }
+        if size < self.len() {
+            self.shrink(size)
+        }
+        if size > self.len() {
+            self.grow(size)
+        }
+    }
+
     /// Enqueues an element into the RingBuffer.
     ///
     /// Once enqueued, the value is situated at the tail of the buffer and the
     /// oldest element is removed from the head.
-    fn enqueue(self: &mut Self, value: T) {
+    pub fn enqueue(self: &mut Self, value: T) {
         self.data[self.head] = value;
         self.head = (self.head + 1) % self.size;
     }
 
     /// Clears the entire buffer, filling it with default values (usually 0)
-    fn clear(self: &mut Self) {
+    pub fn clear(self: &mut Self) {
         self.data.iter_mut().for_each(|x| *x = T::default());
     }
 
-    fn len(self: &Self) -> usize {
+    pub fn len(self: &Self) -> usize {
         self.size
     }
 }
@@ -174,7 +186,6 @@ impl<T> IndexMut<usize> for RingBuffer<T> {
 #[cfg(test)]
 mod tests {
     use super::RingBuffer;
-    use crate::utils::Buffer;
 
     #[test]
     fn basics() {
