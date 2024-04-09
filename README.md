@@ -41,8 +41,8 @@ feature request so it can be added!
   - Unit ruler
 
 **Peak/Waveform Analysis**
-  - Peak meter
-  - Peak graph
+  - Meter
+  - Graph
   - Oscilloscope
   - Static waveform
 

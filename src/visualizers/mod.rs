@@ -2,14 +2,14 @@
 
 mod graph;
 mod grid;
+mod meter;
 mod oscilloscope;
-mod peak_meter;
 mod unit_ruler;
 mod waveform;
 
 pub use graph::*;
 pub use grid::*;
+pub use meter::*;
 pub use oscilloscope::*;
-pub use peak_meter::*;
 pub use unit_ruler::*;
 pub use waveform::*;

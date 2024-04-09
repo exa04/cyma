@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
-use nih_plug_vizia::vizia::{prelude::*, vg, views::normalized_map::amplitude_to_db};
+use nih_plug_vizia::vizia::{prelude::*, vg};
 
-use crate::utils::WaveformBuffer;
+use crate::utils::{ValueScaling, VisualizerBuffer, WaveformBuffer};
 
 // TODO: Allow setting a range, analogous to PeakGraph
 
@@ -21,16 +21,16 @@ use crate::utils::WaveformBuffer;
 ///
 pub struct Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<WaveformBuffer>>>,
 {
     buffer: B,
     display_range: (f32, f32),
-    scale_by_db: bool,
+    scaling: ValueScaling,
 }
 
 impl<B> Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<WaveformBuffer>>>,
 {
     /// Creates a new Oscilloscope.
     ///    
@@ -42,12 +42,12 @@ where
         cx: &mut Context,
         buffer: B,
         display_range: impl Res<(f32, f32)>,
-        scale_by_db: impl Res<bool>,
+        scaling: impl Res<ValueScaling>,
     ) -> Handle<Self> {
         Self {
             buffer,
             display_range: display_range.get_val(cx),
-            scale_by_db: scale_by_db.get_val(cx),
+            scaling: scaling.get_val(cx),
         }
         .build(cx, |_| {})
     }
@@ -55,7 +55,7 @@ where
 
 impl<B> View for Oscilloscope<B>
 where
-    B: Lens<Target = Arc<Mutex<WaveformBuffer<f32>>>>,
+    B: Lens<Target = Arc<Mutex<WaveformBuffer>>>,
 {
     fn element(&self) -> Option<&'static str> {
         Some("22-visualizer")
@@ -69,192 +69,54 @@ where
         let h = bounds.h;
 
         let mut fill = vg::Path::new();
-        let mut path_a = vg::Path::new();
-        let mut path_b = vg::Path::new();
+
         let binding = self.buffer.get(cx);
         let ring_buf = &(binding.lock().unwrap());
-        let mut rb_iter = ring_buf.into_iter();
 
-        let mut i = 1.;
+        let width_delta = w / ring_buf.len() as f32;
 
-        if self.scale_by_db {
-            // Get first value to move_to it
-            let v = rb_iter.next().unwrap();
+        // Local minima (bottom part of waveform)
+        let mut py = self.scaling.value_to_normalized(
+            ring_buf[0].0,
+            self.display_range.0,
+            self.display_range.1,
+        );
+        fill.move_to(x, y + h * (1. - py) + 1.);
+        for i in 1..ring_buf.len() {
+            py = self.scaling.value_to_normalized(
+                ring_buf[i].0,
+                self.display_range.0,
+                self.display_range.1,
+            );
 
-            // Convert value to dB
-            let mut py = amplitude_to_db(v.0.abs());
-
-            // Clamp value to be in range
-            py = py.clamp(self.display_range.0, self.display_range.1);
-
-            // Normalize value
-            py -= self.display_range.0;
-            py /= self.display_range.1 - self.display_range.0;
-            py *= v.0.signum();
-
-            fill.move_to(x, y + (h / 2.) * (1. - py) + 1.);
-            path_a.move_to(x, y + (h / 2.) * (1. - py) + 1.);
-
-            for v in rb_iter {
-                // Convert value to dB
-                py = amplitude_to_db(v.0.abs());
-                // Clamp value to be in range
-                py = py.clamp(self.display_range.0, self.display_range.1);
-
-                // Normalize value
-                py -= self.display_range.0;
-                py /= self.display_range.1 - self.display_range.0;
-                py *= v.0.signum();
-
-                fill.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-                path_a.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-
-                i += 1.;
-            }
-
-            i -= 2.;
-
-            let mut rb_iter = ring_buf.into_iter().rev();
-
-            // Get last value to move_to it
-            let v = rb_iter.next().unwrap();
-
-            // Convert value to dB
-            let mut py = amplitude_to_db(v.0.abs());
-
-            // Clamp value to be in range
-            py = py.clamp(self.display_range.0, self.display_range.1);
-
-            // Normalize value
-            py -= self.display_range.0;
-            py /= self.display_range.1 - self.display_range.0;
-            py *= v.0.signum();
-
-            fill.line_to(x + w, y + (h / 2.) * (1. - py) + 1.);
-            path_b.move_to(x + w, y + (h / 2.) * (1. - py) + 1.);
-
-            for v in rb_iter {
-                // Convert value to dB
-                py = amplitude_to_db(v.1.abs());
-                // Clamp value to be in range
-                py = py.clamp(self.display_range.0, self.display_range.1);
-
-                // Normalize value
-                py -= self.display_range.0;
-                py /= self.display_range.1 - self.display_range.0;
-                py *= v.1.signum();
-
-                fill.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-                path_b.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-
-                i -= 1.;
-            }
-
-            fill.close();
-            canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
-            canvas.stroke_path(&fill, &vg::Paint::color(cx.font_color().into()));
-            canvas.stroke_path(&fill, &vg::Paint::color(cx.font_color().into()));
-        } else {
-            // Get first value to move_to it
-            let v = rb_iter.next().unwrap();
-
-            // Take abs. value
-            let mut py = v.0.abs();
-
-            // Clamp value to be in range
-            py = py.clamp(self.display_range.0, self.display_range.1);
-
-            // Normalize value
-            py -= self.display_range.0;
-            py /= self.display_range.1 - self.display_range.0;
-            py *= v.0.signum();
-
-            fill.move_to(x, y + (h / 2.) * (1. - py) + 1.);
-            path_a.move_to(x, y + (h / 2.) * (1. - py) + 1.);
-
-            for v in rb_iter {
-                // Take abs. value
-                py = v.0.abs();
-                // Clamp value to be in range
-                py = py.clamp(self.display_range.0, self.display_range.1);
-
-                // Normalize value
-                py -= self.display_range.0;
-                py /= self.display_range.1 - self.display_range.0;
-                py *= v.0.signum();
-
-                fill.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-                path_a.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-
-                i += 1.;
-            }
-
-            i -= 2.;
-
-            let mut rb_iter = ring_buf.into_iter().rev();
-
-            // Get last value to move_to it
-            let v = rb_iter.next().unwrap();
-
-            // Take abs. value
-            let mut py = v.1.abs();
-
-            // Clamp value to be in range
-            py = py.clamp(self.display_range.0, self.display_range.1);
-
-            // Normalize value
-            py -= self.display_range.0;
-            py /= self.display_range.1 - self.display_range.0;
-            py *= v.1.signum();
-
-            fill.line_to(x + w, y + (h / 2.) * (1. - py) + 1.);
-            path_b.move_to(x + w, y + (h / 2.) * (1. - py) + 1.);
-
-            for v in rb_iter {
-                // Convert value to dB
-                py = v.1.abs();
-                // Clamp value to be in range
-                py = py.clamp(self.display_range.0, self.display_range.1);
-
-                // Normalize value
-                py -= self.display_range.0;
-                py /= self.display_range.1 - self.display_range.0;
-                py *= v.1.signum();
-
-                fill.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-                path_b.line_to(
-                    x + (w / ring_buf.len() as f32) * i,
-                    y + (h / 2.) * (1. - py) + 1.,
-                );
-
-                i -= 1.;
-            }
-
-            fill.close();
-            canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
-            canvas.stroke_path(&fill, &vg::Paint::color(cx.font_color().into()));
-            canvas.stroke_path(&fill, &vg::Paint::color(cx.font_color().into()));
+            fill.line_to(x + width_delta * i as f32, y + h * (1. - py) + 1.);
         }
+
+        let bottom_stroke = fill.clone();
+        let mut top_stroke = vg::Path::new();
+
+        // Local maxima (top part of waveform)
+        py = self.scaling.value_to_normalized(
+            ring_buf[ring_buf.len() - 1].1,
+            self.display_range.0,
+            self.display_range.1,
+        );
+        fill.line_to(x + w, y + h * (1. - py) + 1.);
+        top_stroke.move_to(x + w, y + h * (1. - py) + 1.);
+        for i in 1..ring_buf.len() {
+            py = self.scaling.value_to_normalized(
+                ring_buf[ring_buf.len() - i].1,
+                self.display_range.0,
+                self.display_range.1,
+            );
+
+            fill.line_to(x + w - width_delta * i as f32, y + h * (1. - py) + 1.);
+            top_stroke.line_to(x + w - width_delta * i as f32, y + h * (1. - py) + 1.);
+        }
+
+        fill.close();
+        canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
+        canvas.stroke_path(&bottom_stroke, &vg::Paint::color(cx.font_color().into()));
+        canvas.stroke_path(&top_stroke, &vg::Paint::color(cx.font_color().into()));
     }
 }

@@ -2,26 +2,28 @@ use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-use crate::utils::PeakBuffer;
 use crate::utils::ValueScaling;
+use crate::utils::VisualizerBuffer;
 
-pub struct PeakMeter<B>
+pub struct Meter<L, I>
 where
-    B: Lens<Target = Arc<Mutex<PeakBuffer<f32>>>>,
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
-    buffer: B,
+    buffer: L,
     display_range: (f32, f32),
     scaling: ValueScaling,
     orientation: Orientation,
 }
 
-impl<B> PeakMeter<B>
+impl<L, I> Meter<L, I>
 where
-    B: Lens<Target = Arc<Mutex<PeakBuffer<f32>>>>,
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
     pub fn new(
         cx: &mut Context,
-        buffer: B,
+        buffer: L,
         display_range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
         orientation: Orientation,
@@ -36,9 +38,10 @@ where
     }
 }
 
-impl<B> View for PeakMeter<B>
+impl<L, I> View for Meter<L, I>
 where
-    B: Lens<Target = Arc<Mutex<PeakBuffer<f32>>>>,
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
     fn element(&self) -> Option<&'static str> {
         None
