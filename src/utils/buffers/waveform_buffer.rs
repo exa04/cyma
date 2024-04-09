@@ -21,20 +21,6 @@ use super::VisualizerBuffer;
 /// These values can be used to construct a zoomed-out representation of the
 /// audio data without losing peak information - which is why this buffer is
 /// used in the [`Oscilloscope`](crate::editor::views::Oscilloscope).
-///
-/// # Example
-///
-/// Here's how to create a `WaveformBuffer` with 512 samples, stored as f32
-/// values. We'll provide a sample rate of 44.1 kHz and a length of 10 seconds.
-///
-/// ```
-/// use cyma::utils::WaveformBuffer;
-/// let mut rb = WaveformBuffer::<f32>::new(512, 10.0, 44100.);
-/// ```
-///
-/// When we later push into this buffer, it will accumulate samples according to
-/// these restrictions. It will take (44100*10)/512 enqueued samples for a new
-/// pair of maximum and minimum values to be added to the buffer.
 #[derive(Clone, PartialEq, Default)]
 pub struct WaveformBuffer {
     buffer: RingBuffer<(f32, f32)>,

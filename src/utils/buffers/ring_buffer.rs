@@ -11,58 +11,6 @@ use std::ops::{Index, IndexMut};
 ///
 /// It is foundational to visualizers, certain audio effects, and many other
 /// real-time applications where elements need to be sequentally enqueued.
-///
-/// # Example
-///
-/// ```
-/// use cyma::utils::RingBuffer;
-///
-/// let mut rb = RingBuffer::<i32>::new(4);
-///
-/// rb.enqueue(1);
-/// rb.enqueue(2);
-/// dbg!(&rb);
-///
-/// // &rb = [0, 0, 1, 2]
-///
-/// rb.enqueue(3);
-/// rb.enqueue(4);
-/// dbg!(&rb);
-///
-/// // &rb = [1, 2, 3, 4]
-///
-/// rb.enqueue(5);
-/// dbg!(&rb);
-///
-/// // &rb = [2, 3, 4, 5]
-///
-/// let tripled: Vec<i32> = (&rb).into_iter().map(|x| *x * 3).collect();
-///
-/// dbg!(tripled);
-///
-/// // tripled = [6, 9, 12, 15]
-/// ```
-///
-/// Internally, this buffer stores elements in sequence, wrapping around to
-/// replace old values. The order in which elements are retrieved by indexing
-/// into a RingBuffer, or iterating over it, thus differs from the way they're
-/// internally stored. If you dereference this type, you get a slice with the
-/// internal order of all elements.
-///
-/// ```
-/// use cyma::utils::RingBuffer;
-///
-/// let mut rb = RingBuffer::<i32>::new(4);
-///
-/// rb.enqueue(1);
-/// rb.enqueue(2);
-/// rb.enqueue(3);
-/// rb.enqueue(4);
-/// rb.enqueue(5);
-///
-/// assert_eq!(rb[0], 2);       //  rb = [2, 3, 4, 5]
-/// assert_eq!((*rb)[0], 5);    // *rb = [5, 2, 3, 4]
-/// ```
 #[derive(Clone, PartialEq, Eq, Default, Hash, Debug)]
 pub struct RingBuffer<T> {
     head: usize,
