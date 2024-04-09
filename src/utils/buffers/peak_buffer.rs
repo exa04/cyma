@@ -1,4 +1,3 @@
-use num_traits::real::Real;
 use std::ops::{Index, IndexMut};
 
 use super::{RingBuffer, VisualizerBuffer};

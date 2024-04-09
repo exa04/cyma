@@ -1,23 +1,18 @@
-use crate::utils::ValueScaling;
+use crate::utils::{ValueScaling, VisualizerBuffer};
 
-use len_trait::len::Len;
 use nih_plug_vizia::vizia::{
     binding::{Lens, LensExt, Res},
     context::{Context, DrawContext},
     vg,
     view::{Canvas, Handle, View},
 };
-use std::{
-    ops::Index,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-/// A real-time graph displaying information that is stored inside a iterable
-/// collection.
+/// A real-time graph displaying information that is stored inside a buffer
 pub struct Graph<L, I>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
-    I: Len + Index<usize, Output = f32>,
+    I: VisualizerBuffer<f32> + 'static,
 {
     buffer: L,
     display_range: (f32, f32),
@@ -27,7 +22,7 @@ where
 impl<L, I> Graph<L, I>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
-    I: Len + Index<usize, Output = f32> + 'static,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
     pub fn new(
         cx: &mut Context,
@@ -47,7 +42,7 @@ where
 impl<L, I> View for Graph<L, I>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
-    I: Len + Index<usize, Output = f32> + 'static,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
     fn element(&self) -> Option<&'static str> {
         Some("22-visualizer")
