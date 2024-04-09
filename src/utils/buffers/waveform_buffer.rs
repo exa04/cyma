@@ -1,12 +1,12 @@
-use crate::utils::ring_buffer::{Iter, RingBuffer};
+use crate::utils::ring_buffer::RingBuffer;
 
-use len_trait::len::{Empty, Len};
-use nih_plug::buffer::Buffer;
 use num_traits::real::Real;
 use std::{
-    fmt::{Debug, Formatter},
-    ops::{Deref, DerefMut, Index, IndexMut},
+    fmt::Debug,
+    ops::{Index, IndexMut},
 };
+
+use super::Buffer;
 
 /// A special type of ring buffer, intended for use in peak waveform analysis.
 ///
@@ -54,10 +54,7 @@ pub struct WaveformBuffer<T> {
     t: f32,
 }
 
-impl<T> WaveformBuffer<T>
-where
-    T: Clone + Copy + Default + Debug + PartialOrd + Real,
-{
+impl<T: Default + Copy + Real> WaveformBuffer<T> {
     /// Creates a new `WaveformBuffer` with the specified sample rate and
     /// duration (in seconds).
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
@@ -72,18 +69,6 @@ where
             t: sample_delta,
         }
     }
-
-    // TODO: Allow resizing without clearing
-    /// Sets the size of the buffer and **clears** it.
-    pub fn resize(self: &mut Self, size: usize) {
-        if self.buffer.len() == size {
-            return;
-        };
-        self.buffer.resize(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
-        self.buffer.clear();
-    }
-
     /// Sets the sample rate of the buffer and **clears** it.
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
@@ -101,11 +86,16 @@ where
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
         (sample_rate * duration) / size as f32
     }
+}
 
+impl<T> Buffer<T> for WaveformBuffer<T>
+where
+    T: Clone + Copy + Default + Debug + PartialOrd + Real,
+{
     /// Adds a new element of type `T` to the buffer.
     ///
     /// If the buffer is full, the oldest element is removed.
-    pub fn enqueue(self: &mut Self, value: T) {
+    fn enqueue(self: &mut Self, value: T) {
         self.t -= 1.0;
         if self.t < 0.0 {
             self.buffer.enqueue((self.min_acc, self.max_acc));
@@ -121,45 +111,30 @@ where
         }
     }
 
-    /// Returns the length of the buffer.
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.buffer.len()
     }
-}
 
-impl WaveformBuffer<f32> {
-    /// Enqueues an entire [`Buffer`], mono-summing it if no channel is specified.
-    pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer, channel: Option<usize>) {
-        match channel {
-            Some(channel) => {
-                for sample in buffer.as_slice()[channel].into_iter() {
-                    self.enqueue(*sample);
-                }
-            }
-            None => {
-                for sample in buffer.iter_samples() {
-                    self.enqueue(
-                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
-                    );
-                }
-            }
+    fn clear(self: &mut Self) {
+        self.buffer.clear();
+    }
+
+    fn grow(self: &mut Self, size: usize) {
+        if size == self.buffer.len() {
+            return;
         }
+        self.buffer.grow(size);
+        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.buffer.clear();
     }
-}
 
-impl<'a, T: Copy> IntoIterator for &'a WaveformBuffer<T> {
-    type Item = &'a (T, T);
-    type IntoIter = Iter<'a, (T, T)>;
-
-    /// Creates an iterator from a reference.
-    fn into_iter(self) -> Self::IntoIter {
-        (&self.buffer).into_iter()
-    }
-}
-
-impl<T: Debug + Copy> Debug for WaveformBuffer<T> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        self.buffer.fmt(f)
+    fn shrink(self: &mut Self, size: usize) {
+        if size == self.buffer.len() {
+            return;
+        }
+        self.buffer.shrink(size);
+        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.buffer.clear();
     }
 }
 
@@ -173,38 +148,5 @@ impl<T> Index<usize> for WaveformBuffer<T> {
 impl<T> IndexMut<usize> for WaveformBuffer<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.buffer.index_mut(index)
-    }
-}
-
-impl<T> Empty for WaveformBuffer<T> {
-    fn is_empty(self: &Self) -> bool {
-        self.buffer.is_empty()
-    }
-}
-impl<T> Len for WaveformBuffer<T> {
-    /// Returns the length of the buffer.
-    fn len(self: &Self) -> usize {
-        self.buffer.len()
-    }
-}
-
-impl<T: Default> Deref for WaveformBuffer<T> {
-    type Target = [(T, T)];
-    /// Dereferences the underlying data, giving you direct access to it.
-    ///
-    /// Crucially, this does not preserve the ordering you would get by
-    /// iterating over the `RingBuffer` or indexing it directly.
-    fn deref(&self) -> &Self::Target {
-        self.buffer.deref()
-    }
-}
-impl<T: Default> DerefMut for WaveformBuffer<T> {
-    /// Mutably dereferences the underlying data, giving you direct access to
-    /// it.
-    ///
-    /// Crucially, this does not preserve the ordering you would get by
-    /// iterating over the `RingBuffer` or indexing it directly.
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.buffer.deref_mut()
     }
 }

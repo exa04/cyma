@@ -1,14 +1,9 @@
-use len_trait::len::{Empty, Len};
-use nih_plug::buffer::Buffer;
 use num_traits::real::Real;
-use std::{
-    fmt::{Debug, Formatter},
-    ops::{Deref, DerefMut, Index, IndexMut},
-};
+use std::ops::{Index, IndexMut};
 
-use super::{ring_buffer::Iter, RingBuffer};
+use super::{Buffer, RingBuffer};
 
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, Default)]
 pub struct PeakBuffer<T> {
     buffer: RingBuffer<T>,
     // Minimum and maximum accumulators
@@ -22,10 +17,7 @@ pub struct PeakBuffer<T> {
     t: f32,
 }
 
-impl<T> PeakBuffer<T>
-where
-    T: Clone + Copy + Default + Debug + PartialOrd + Real,
-{
+impl<T: Default + Copy> PeakBuffer<T> {
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
         Self {
@@ -36,16 +28,6 @@ where
             duration,
             t: sample_delta,
         }
-    }
-
-    // TODO: Allow resizing without clearing
-    pub fn resize(self: &mut Self, size: usize) {
-        if self.buffer.len() == size {
-            return;
-        };
-        self.buffer.resize(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
-        self.buffer.clear();
     }
 
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
@@ -63,8 +45,13 @@ where
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
         (sample_rate * duration) / size as f32
     }
+}
 
-    pub fn enqueue(self: &mut Self, value: T) {
+impl<T> Buffer<T> for PeakBuffer<T>
+where
+    T: Clone + Copy + Default + PartialOrd + Real,
+{
+    fn enqueue(self: &mut Self, value: T) {
         let value = value.abs();
         self.t -= 1.0;
         if self.t < 0.0 {
@@ -77,56 +64,32 @@ where
         }
     }
 
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.buffer.len()
     }
-}
 
-impl PeakBuffer<f32> {
-    /// Enqueues an entire [`Buffer`], mono-summing it if no channel is specified.
-    pub fn enqueue_buffer(self: &mut Self, buffer: &mut Buffer, channel: Option<usize>) {
-        match channel {
-            Some(channel) => {
-                for sample in buffer.as_slice()[channel].into_iter() {
-                    self.enqueue(*sample);
-                }
-            }
-            None => {
-                for sample in buffer.iter_samples() {
-                    self.enqueue(
-                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
-                    );
-                }
-            }
-        }
+    fn clear(self: &mut Self) {
+        self.buffer.clear();
     }
-}
 
-impl<'a, T: Copy> IntoIterator for &'a PeakBuffer<T> {
-    type Item = &'a T;
-    type IntoIter = Iter<'a, T>;
-
-    /// Creates an iterator from a reference.
-    fn into_iter(self) -> Self::IntoIter {
-        (&self.buffer).into_iter()
+    /// Grows the buffer, **clearing it**.
+    fn grow(self: &mut Self, size: usize) {
+        if self.buffer.len() == size {
+            return;
+        };
+        self.buffer.grow(size);
+        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.buffer.clear();
     }
-}
 
-impl<T: Debug + Copy> Debug for PeakBuffer<T> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
-        self.buffer.fmt(f)
-    }
-}
-
-impl<T> Empty for PeakBuffer<T> {
-    fn is_empty(self: &Self) -> bool {
-        self.buffer.is_empty()
-    }
-}
-impl<T> Len for PeakBuffer<T> {
-    /// Returns the length of the buffer.
-    fn len(self: &Self) -> usize {
-        self.buffer.len()
+    /// Shrinks the buffer, **clearing it**.
+    fn shrink(self: &mut Self, size: usize) {
+        if self.buffer.len() == size {
+            return;
+        };
+        self.buffer.shrink(size);
+        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.buffer.clear();
     }
 }
 
@@ -143,29 +106,10 @@ impl<T> IndexMut<usize> for PeakBuffer<T> {
     }
 }
 
-impl<T: Default> Deref for PeakBuffer<T> {
-    type Target = [T];
-    /// Dereferences the underlying data, giving you direct access to it.
-    ///
-    /// Crucially, this does not preserve the ordering you would get by
-    /// iterating over the `RingBuffer` or indexing it directly.
-    fn deref(&self) -> &Self::Target {
-        self.buffer.deref()
-    }
-}
-impl<T: Default> DerefMut for PeakBuffer<T> {
-    /// Mutably dereferences the underlying data, giving you direct access to
-    /// it.
-    ///
-    /// Crucially, this does not preserve the ordering you would get by
-    /// iterating over the `RingBuffer` or indexing it directly.
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.buffer.deref_mut()
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::utils::Buffer;
+
     use super::PeakBuffer;
 
     #[test]
@@ -178,10 +122,5 @@ mod tests {
         rb.enqueue(-10.);
         rb.enqueue(4.);
         rb.enqueue(6.);
-
-        let buffer = rb.buffer.to_vec();
-
-        assert_eq!(buffer[0], 9.);
-        assert_eq!(buffer[1], 19.);
     }
 }
