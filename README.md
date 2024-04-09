@@ -30,7 +30,7 @@ Read the <a href="https://223230.github.io/cyma/">docs</a> (incomplete)
 
 ## 🧰 What's included
 
-Check out [this](https://github.com/223230/cyma/milestone/1) milestone to see
+Check out [this project](https://github.com/users/223230/projects/5/views/3) to see
 what views will eventually be added. Do you think something's missing? File a
 feature request so it can be added!
 
