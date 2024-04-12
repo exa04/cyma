@@ -7,8 +7,6 @@ description = "Composable views and associated data structures for nih-plug UIs 
 [dependencies]
 nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git" }
-num-traits = "0.2.18"
-len-trait = "0.6.1"
 lazy_static = "1.4.0"
 
 [dev-dependencies]
