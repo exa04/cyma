@@ -829,6 +829,7 @@ dependencies = [
 name = "cyma"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "len-trait",
  "nih_plug",
  "nih_plug_vizia",
