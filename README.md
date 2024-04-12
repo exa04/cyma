@@ -48,8 +48,10 @@ feature request so it can be added!
   - Meter
   - Graph
   - Oscilloscope
-  - Lissajous
   - Static waveform
+
+**Stereo imaging**
+  - Lissajous
 
 ### 🎛️ Controls
 
