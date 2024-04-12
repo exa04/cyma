@@ -1,8 +1,8 @@
-use crate::utils::{RingBuffer, ValueScaling};
+use crate::utils::RingBuffer;
 
 use lazy_static::lazy_static;
 use nih_plug_vizia::vizia::{
-    binding::{Lens, LensExt, Res},
+    binding::{Lens, LensExt},
     context::{Context, DrawContext},
     vg,
     view::{Canvas, Handle, View},
