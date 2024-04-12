@@ -26,6 +26,10 @@ Cyma is a collection of flexible, composable views that you can use to make any
 plug-in UI with ease. It uses various custom ring buffers for real-time
 visualizers, allowing you to easily build plug-in UIs that are performant.
 
+Here's a demo:
+
+https://github.com/223230/cyma/assets/68156346/a40286ca-22e3-424d-93b6-56ff1a29ebdc
+
 Read the <a href="https://223230.github.io/cyma/">docs</a> (incomplete)
 
 ## 🧰 What's included
