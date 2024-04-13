@@ -7,7 +7,7 @@ use cyma::{
     },
 };
 use nih_plug::editor::Editor;
-use nih_plug_vizia::{create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
+use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
 
 #[derive(Lens, Clone)]
 pub(crate) struct Data {
@@ -42,6 +42,7 @@ pub(crate) fn default_state() -> Arc<ViziaState> {
 
 pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
+        assets::register_noto_sans_light(cx);
         editor_data.clone().build(cx);
         VStack::new(cx, |cx| {
             HStack::new(cx, |cx| {
