@@ -78,3 +78,61 @@ where
         );
     }
 }
+
+pub struct LissajousGrid {}
+
+impl LissajousGrid {
+    pub fn new(cx: &mut Context) -> Handle<Self> {
+        Self {}.build(cx, |_| {})
+    }
+}
+
+impl View for LissajousGrid {
+    fn element(&self) -> Option<&'static str> {
+        None
+    }
+    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+        let bounds = cx.bounds();
+
+        let x = bounds.x;
+        let y = bounds.y;
+        let w = bounds.w;
+        let h = bounds.h;
+
+        let mut path = vg::Path::new();
+
+        // Diamond shape
+        path.move_to(x + w / 2., y);
+        path.line_to(x + w, y + h / 2.);
+        path.line_to(x + w / 2., y + h);
+        path.line_to(x, y + h / 2.);
+        path.close();
+
+        canvas.fill_path(
+            &(path.clone()),
+            &vg::Paint::color(cx.background_color().into()),
+        );
+
+        // Vertical line
+        path.move_to(x, y + h / 2.);
+        path.line_to(x + w, y + h / 2.);
+        path.close();
+
+        // Horizontal line
+        path.move_to(x + w / 2., y);
+        path.line_to(x + w / 2., y + h);
+        path.close();
+
+        // Diagonal line (Left channel)
+        path.move_to(x + w * 0.25, y + h * 0.25);
+        path.line_to(x + w * 0.75, y + h * 0.75);
+        path.close();
+
+        // Diagonal line (Right channel)
+        path.move_to(x + w * 0.75, y + h * 0.25);
+        path.line_to(x + w * 0.25, y + h * 0.75);
+        path.close();
+
+        canvas.stroke_path(&path, &vg::Paint::color(cx.font_color().into()));
+    }
+}
