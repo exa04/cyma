@@ -4,6 +4,13 @@ version = "0.1.0"
 edition = "2021"
 description = "Composable views and associated data structures for nih-plug UIs made using VIZIA"
 
+[workspace]
+resolver = "2"
+members = [
+    "xtask",
+    "examples/visualizers",
+]
+
 [dependencies]
 nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git" }

@@ -92,6 +92,8 @@ audio at 44.1 kHz.
 It's very plug-and-play, you only need to call `enqueue_buffer()` in your
 plugin's process function to use it!
 
+Check out the [examples](examples) to see some more in-depth demos of Cyma.
+
 ## 🍔 Composing views
 
 A core feature of Cyma is composability.
