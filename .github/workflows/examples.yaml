@@ -18,6 +18,6 @@ jobs:
       run: |
         sudo apt update
         # baseview dependencies
-        sudo apt install libx11-xcb-dev libxcb-dri2-0-dev libgl1-mesa-dev libxcb-icccm4-dev libxcursor-dev libxcb-{render,shape,xfixes}0-dev
+        sudo apt install libasound2-dev libx11-xcb-dev libxcb-dri2-0-dev libgl1-mesa-dev libxcb-icccm4-dev libxcursor-dev libxcb-{render,shape,xfixes}0-dev
     - name: Bundle visualizer example using xtask
       run: cargo xtask bundle visualizers
