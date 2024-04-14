@@ -107,7 +107,7 @@ fn peak_graph(cx: &mut Context) {
             )
             .color(Color::rgb(60, 60, 60));
 
-            Graph::new(cx, Data::peak_buffer, (-32.0, 6.0), ValueScaling::Decibels)
+            Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
                 .color(Color::rgba(255, 255, 255, 160))
                 .background_color(Color::rgba(255, 255, 255, 60));
         })
@@ -134,7 +134,7 @@ fn peak_graph(cx: &mut Context) {
         Meter::new(
             cx,
             Data::peak_buffer,
-            (-32.0, 6.0),
+            (-32.0, 8.0),
             ValueScaling::Decibels,
             Orientation::Vertical,
         )
