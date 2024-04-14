@@ -65,8 +65,8 @@ where
                     let dot_y = left * *TRANSLATE_SIN + right * *TRANSLATE_COS;
 
                     dots.rect(
-                        x + w / 2. + dot_x * w / PI,
-                        y + h / 2. + dot_y * h / PI,
+                        x + w / 2. - dot_x * w / PI,
+                        y + h / 2. - dot_y * h / PI,
                         1f32,
                         1f32,
                     );
