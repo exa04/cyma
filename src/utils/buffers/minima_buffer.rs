@@ -23,7 +23,7 @@ impl MinimaBuffer {
         let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
         Self {
             buffer: RingBuffer::<f32>::new(size),
-            min_acc: 0.,
+            min_acc: f32::MAX,
             sample_delta,
             sample_rate,
             duration,
@@ -55,7 +55,7 @@ impl VisualizerBuffer<f32> for MinimaBuffer {
         if self.t < 0.0 {
             self.buffer.enqueue(self.min_acc);
             self.t += self.sample_delta;
-            self.min_acc = 0.;
+            self.min_acc = f32::MAX;
         }
         if value < self.min_acc {
             self.min_acc = value
