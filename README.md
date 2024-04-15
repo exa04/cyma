@@ -53,14 +53,8 @@ feature request so it can be added!
 **Stereo imaging**
   - Lissajous
 
-### 🎛️ Controls
-
-### 🛠️ Utils
-
-**Buffers**
-  - **RingBuffer** - A generic circular buffer
-  - **WaveformBuffer** - A buffer for waveform analysis
-  - **PeakBuffer** - A buffer for peak analysis
+**Spectral analysis**
+  - Spectrum Analyzer
 
 ## ❓ Example
 
