@@ -3,10 +3,13 @@ use nih_plug_vizia::vizia::vg;
 use std::sync::{Arc, Mutex};
 
 use crate::utils::SpectrumOutput;
+use crate::utils::ValueScaling;
 
 pub struct SpectrumAnalyzer {
     spectrum: Arc<Mutex<SpectrumOutput>>,
     variant: SpectrumAnalyzerVariant,
+    frequency_scaling: ValueScaling,
+    magnitude_scaling: ValueScaling,
 }
 
 pub enum SpectrumAnalyzerVariant {
@@ -22,6 +25,8 @@ impl SpectrumAnalyzer {
         cx: &mut Context,
         spectrum: LSpectrum,
         variant: SpectrumAnalyzerVariant,
+        frequency_scaling: ValueScaling,
+        magnitude_scaling: ValueScaling,
     ) -> Handle<Self>
     where
         LSpectrum: Lens<Target = Arc<Mutex<SpectrumOutput>>>,
@@ -29,6 +34,8 @@ impl SpectrumAnalyzer {
         Self {
             spectrum: spectrum.get(cx),
             variant,
+            frequency_scaling,
+            magnitude_scaling,
         }
         .build(cx, |_cx| ())
     }
@@ -50,6 +57,8 @@ impl View for SpectrumAnalyzer {
         let mut spectrum = self.spectrum.lock().unwrap();
         let spectrum = spectrum.read();
 
+        let half_nyquist = 20_000.0;
+
         let foreground =
             vg::Paint::color(cx.font_color().into()).with_line_width(cx.scale_factor());
         let background =
@@ -60,13 +69,18 @@ impl View for SpectrumAnalyzer {
                 let mut path = vg::Path::new();
 
                 for (bin_idx, magnitude) in spectrum.iter().enumerate() {
-                    let bin_x = bin_idx as f32 / spectrum.len() as f32;
+                    let freq = (bin_idx as f32 / spectrum.len() as f32) * half_nyquist;
+
+                    // Normalize frequency
+                    let freq_normalized =
+                        self.frequency_scaling
+                            .value_to_normalized(freq, 20., half_nyquist);
 
                     let magnitude_db = nih_plug::util::gain_to_db(*magnitude);
                     let height = ((magnitude_db + 80.0) / 100.0).clamp(0.0, 1.0);
 
-                    path.move_to(x + (w * bin_x), y + (h * (1.0 - height)));
-                    path.line_to(x + (w * bin_x), y + h);
+                    path.move_to(x + (w * freq_normalized), y + (h * (1.0 - height)));
+                    path.line_to(x + (w * freq_normalized), y + h);
                 }
 
                 canvas.stroke_path(&path, &foreground);
@@ -79,12 +93,17 @@ impl View for SpectrumAnalyzer {
                 line.move_to(x, y + (h * (1.0 - height)));
 
                 for (bin_idx, magnitude) in spectrum.iter().enumerate() {
-                    let bin_x = bin_idx as f32 / spectrum.len() as f32;
+                    let freq = (bin_idx as f32 / spectrum.len() as f32) * half_nyquist;
+
+                    // Normalize frequency
+                    let freq_normalized =
+                        self.frequency_scaling
+                            .value_to_normalized(freq, 20., half_nyquist);
 
                     magnitude_db = nih_plug::util::gain_to_db(*magnitude);
                     height = ((magnitude_db + 80.0) / 100.0).clamp(0.0, 1.0);
 
-                    line.line_to(x + (w * bin_x), y + (h * (1.0 - height)));
+                    line.line_to(x + (w * freq_normalized), y + (h * (1.0 - height)));
                 }
 
                 let mut fill = line.clone();

@@ -69,9 +69,15 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
 
 fn spectrum_analyzer(cx: &mut Context) {
     ZStack::new(cx, |cx| {
-        SpectrumAnalyzer::new(cx, Data::spectrum, SpectrumAnalyzerVariant::LINE)
-            .color(Color::rgba(255, 255, 255, 160))
-            .background_color(Color::rgba(255, 255, 255, 60));
+        SpectrumAnalyzer::new(
+            cx,
+            Data::spectrum,
+            SpectrumAnalyzerVariant::LINE,
+            ValueScaling::Frequency,
+            ValueScaling::Decibels,
+        )
+        .color(Color::rgba(255, 255, 255, 160))
+        .background_color(Color::rgba(255, 255, 255, 60));
     })
     .background_color(Color::rgb(16, 16, 16))
     .border_color(Color::rgb(80, 80, 80))
