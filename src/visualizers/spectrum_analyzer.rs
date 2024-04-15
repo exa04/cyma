@@ -1,5 +1,6 @@
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::vizia::vg;
+use realfft::num_traits::Pow;
 use std::sync::{Arc, Mutex};
 
 use crate::utils::SpectrumOutput;
@@ -12,6 +13,7 @@ pub struct SpectrumAnalyzer {
     frequency_range: (f32, f32),
     magnitude_scaling: ValueScaling,
     magnitude_range: (f32, f32),
+    slope: Option<f32>,
 }
 
 pub enum SpectrumAnalyzerVariant {
@@ -28,6 +30,7 @@ impl SpectrumAnalyzer {
         frequency_range: (f32, f32),
         magnitude_scaling: ValueScaling,
         magnitude_range: (f32, f32),
+        slope: Option<f32>,
     ) -> Handle<Self>
     where
         LSpectrum: Lens<Target = Arc<Mutex<SpectrumOutput>>>,
@@ -39,6 +42,7 @@ impl SpectrumAnalyzer {
             frequency_range,
             magnitude_scaling,
             magnitude_range,
+            slope,
         }
         .build(cx, |_cx| ())
     }
@@ -70,6 +74,13 @@ impl View for SpectrumAnalyzer {
             SpectrumAnalyzerVariant::BAR => {
                 let mut path = vg::Path::new();
 
+                // This will be used to normalize the magnitudes if a slope gets applied to them
+                let magnitude_slope_divisor = if self.slope.is_some() {
+                    half_nyquist.log2().powf(self.slope.unwrap()) / self.slope.unwrap()
+                } else {
+                    0.
+                };
+
                 for (bin_idx, magnitude) in spectrum_output.iter().enumerate() {
                     let freq = (bin_idx as f32 / spectrum_output.len() as f32) * half_nyquist;
 
@@ -80,11 +91,22 @@ impl View for SpectrumAnalyzer {
                         self.frequency_range.1,
                     );
 
-                    let magnitude_normalized = self.magnitude_scaling.value_to_normalized(
-                        *magnitude,
-                        self.magnitude_range.0,
-                        self.magnitude_range.1,
-                    );
+                    // Normalize magnitude and apply slope if one is set
+                    let magnitude_normalized = if self.slope.is_some() {
+                        self.magnitude_scaling.value_to_normalized(
+                            *magnitude
+                                * ((freq + 1.).log2().powf(self.slope.unwrap())
+                                    / magnitude_slope_divisor),
+                            self.magnitude_range.0,
+                            self.magnitude_range.1,
+                        )
+                    } else {
+                        self.magnitude_scaling.value_to_normalized(
+                            *magnitude,
+                            self.magnitude_range.0,
+                            self.magnitude_range.1,
+                        )
+                    };
 
                     path.move_to(
                         x + (w * freq_normalized),
@@ -96,29 +118,57 @@ impl View for SpectrumAnalyzer {
                 canvas.stroke_path(&path, &foreground);
             }
             SpectrumAnalyzerVariant::LINE => {
-                let magnitude_normalized = self.magnitude_scaling.value_to_normalized(
-                    spectrum_output[0],
+                let mut line = vg::Path::new();
+
+                let mut magnitude_normalized = self.magnitude_scaling.value_to_normalized(
+                    spectrum_output[1],
                     self.magnitude_range.0,
                     self.magnitude_range.1,
                 );
 
-                let mut line = vg::Path::new();
                 line.move_to(x, y + (h * (1.0 - magnitude_normalized)));
 
-                for (bin_idx, magnitude) in spectrum_output.iter().enumerate() {
+                // This will be used to normalize the magnitudes if a slope gets applied to them
+                let magnitude_slope_divisor = if self.slope.is_some() {
+                    half_nyquist.log2().powf(self.slope.unwrap()) / self.slope.unwrap()
+                } else {
+                    0.
+                };
+
+                for (bin_idx, magnitude) in spectrum_output.iter().skip(1).enumerate() {
                     let freq = (bin_idx as f32 / spectrum_output.len() as f32) * half_nyquist;
+
+                    // Normalize magnitude and apply slope if one is set
+                    magnitude_normalized = if self.slope.is_some() {
+                        self.magnitude_scaling.value_to_normalized(
+                            *magnitude
+                                * ((freq + 1.).log2().powf(self.slope.unwrap())
+                                    / magnitude_slope_divisor),
+                            self.magnitude_range.0,
+                            self.magnitude_range.1,
+                        )
+                    } else {
+                        self.magnitude_scaling.value_to_normalized(
+                            *magnitude,
+                            self.magnitude_range.0,
+                            self.magnitude_range.1,
+                        )
+                    };
+
+                    // Skip frequencies that are out of range
+                    if freq < self.frequency_range.0 {
+                        line.move_to(x, y + (h * (1.0 - magnitude_normalized)));
+                        continue;
+                    }
+                    if freq > self.frequency_range.1 {
+                        break;
+                    }
 
                     // Normalize frequency
                     let freq_normalized = self.frequency_scaling.value_to_normalized(
                         freq,
                         self.frequency_range.0,
                         self.frequency_range.1,
-                    );
-
-                    let magnitude_normalized = self.magnitude_scaling.value_to_normalized(
-                        *magnitude,
-                        self.magnitude_range.0,
-                        self.magnitude_range.1,
                     );
 
                     line.line_to(
