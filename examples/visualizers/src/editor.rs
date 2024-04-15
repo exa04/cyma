@@ -1,9 +1,10 @@
 use std::sync::{Arc, Mutex};
 
 use cyma::{
-    utils::{PeakBuffer, RingBuffer, ValueScaling, WaveformBuffer},
+    utils::{PeakBuffer, RingBuffer, SpectrumOutput, ValueScaling, WaveformBuffer},
     visualizers::{
-        Graph, Grid, Lissajous, LissajousGrid, Meter, Oscilloscope, UnitRuler, Waveform,
+        Graph, Grid, Lissajous, LissajousGrid, Meter, Oscilloscope, SpectrumAnalyzer,
+        SpectrumAnalyzerVariant, UnitRuler, Waveform,
     },
 };
 use nih_plug::editor::Editor;
@@ -14,6 +15,7 @@ pub(crate) struct Data {
     pub(crate) oscilloscope_buffer: Arc<Mutex<WaveformBuffer>>,
     pub(crate) peak_buffer: Arc<Mutex<PeakBuffer>>,
     pub(crate) lissajous_buffer: Arc<Mutex<RingBuffer<(f32, f32)>>>,
+    pub(crate) spectrum: Arc<Mutex<SpectrumOutput>>,
 
     pub(crate) waveform: Arc<Mutex<Vec<f32>>>,
 }
@@ -23,12 +25,14 @@ impl Data {
         oscilloscope_buffer: Arc<Mutex<WaveformBuffer>>,
         peak_buffer: Arc<Mutex<PeakBuffer>>,
         lissajous_buffer: Arc<Mutex<RingBuffer<(f32, f32)>>>,
+        spectrum: Arc<Mutex<SpectrumOutput>>,
         waveform: Arc<Mutex<Vec<f32>>>,
     ) -> Self {
         Self {
             oscilloscope_buffer,
             peak_buffer,
             lissajous_buffer,
+            spectrum,
             waveform,
         }
     }
@@ -37,7 +41,7 @@ impl Data {
 impl Model for Data {}
 
 pub(crate) fn default_state() -> Arc<ViziaState> {
-    ViziaState::new(|| (800, 600))
+    ViziaState::new(|| (800, 800))
 }
 
 pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
@@ -52,12 +56,26 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
             })
             .height(Pixels(200.))
             .col_between(Pixels(16.0));
+
             peak_graph(cx);
+
+            spectrum_analyzer(cx);
         })
         .child_space(Pixels(16.0))
         .row_between(Pixels(16.0))
         .background_color(Color::rgb(24, 24, 24));
     })
+}
+
+fn spectrum_analyzer(cx: &mut Context) {
+    ZStack::new(cx, |cx| {
+        SpectrumAnalyzer::new(cx, Data::spectrum, SpectrumAnalyzerVariant::LINE)
+            .color(Color::rgba(255, 255, 255, 160))
+            .background_color(Color::rgba(255, 255, 255, 60));
+    })
+    .background_color(Color::rgb(16, 16, 16))
+    .border_color(Color::rgb(80, 80, 80))
+    .border_width(Pixels(1.));
 }
 
 /// Draws a lissajous with a diamond-shaped grid backdrop and text labels for

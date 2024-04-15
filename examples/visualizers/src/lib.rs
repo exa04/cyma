@@ -1,4 +1,6 @@
-use cyma::utils::{PeakBuffer, RingBuffer, VisualizerBuffer, WaveformBuffer};
+use cyma::utils::{
+    PeakBuffer, RingBuffer, SpectrumInput, SpectrumOutput, VisualizerBuffer, WaveformBuffer,
+};
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::{
@@ -16,6 +18,9 @@ pub struct VisualizersDemo {
     peak_buffer: Arc<Mutex<PeakBuffer>>,
     lissajous_buffer: Arc<Mutex<RingBuffer<(f32, f32)>>>,
 
+    spectrum_input: SpectrumInput,
+    spectrum_output: Arc<Mutex<SpectrumOutput>>,
+
     waveform: Arc<Mutex<Vec<f32>>>,
 }
 
@@ -27,11 +32,16 @@ struct DemoParams {
 
 impl Default for VisualizersDemo {
     fn default() -> Self {
+        let (spectrum_input, spectrum_output) = SpectrumInput::new(2, 100.);
+
         Self {
             params: Arc::new(DemoParams::default()),
             oscilloscope_buffer: Arc::new(Mutex::new(WaveformBuffer::new(800, 44100.0, 5.0))),
             peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 44100.0, 10.0))),
             lissajous_buffer: Arc::new(Mutex::new(RingBuffer::new(2048))),
+
+            spectrum_input,
+            spectrum_output: Arc::new(Mutex::new(spectrum_output)),
 
             // This is just some dummy data that doesn't change.
             waveform: Arc::new(Mutex::new(
@@ -90,6 +100,7 @@ impl Plugin for VisualizersDemo {
                 self.oscilloscope_buffer.clone(),
                 self.peak_buffer.clone(),
                 self.lissajous_buffer.clone(),
+                self.spectrum_output.clone(),
                 self.waveform.clone(),
             ),
             self.params.editor_state.clone(),
@@ -114,6 +125,9 @@ impl Plugin for VisualizersDemo {
             }
             Err(_) => return false,
         }
+
+        self.spectrum_input
+            .update_sample_rate(buffer_config.sample_rate);
 
         true
     }
@@ -145,6 +159,8 @@ impl Plugin for VisualizersDemo {
                         }));
                 }
             }
+
+            self.spectrum_input.compute(buffer);
         }
         ProcessStatus::Normal
     }
