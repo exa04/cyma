@@ -69,6 +69,26 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
 
 fn spectrum_analyzer(cx: &mut Context) {
     ZStack::new(cx, |cx| {
+        Grid::new(
+            cx,
+            ValueScaling::Frequency,
+            (10., 21_000.),
+            vec![
+                20., 40., 30., 50., 60., 70., 80., 90., 100., 200., 300., 400., 500., 600., 700.,
+                800., 900., 1_000., 2_000., 3_000., 4_000., 5_000., 6_000., 7_000., 8_000., 9_000.,
+                10_000., 20_000.,
+            ],
+            Orientation::Vertical,
+        )
+        .color(Color::rgb(60, 60, 60));
+        Grid::new(
+            cx,
+            ValueScaling::Linear,
+            (-80., 6.),
+            vec![0., -10., -20., -30., -40., -50., -60., -70.],
+            Orientation::Horizontal,
+        )
+        .color(Color::rgb(40, 40, 40));
         SpectrumAnalyzer::new(
             cx,
             Data::spectrum,
@@ -127,9 +147,10 @@ fn peak_graph(cx: &mut Context) {
         ZStack::new(cx, |cx| {
             Grid::new(
                 cx,
-                (-32.0, 8.0),
-                0.0,
+                ValueScaling::Linear,
+                (-32., 8.),
                 vec![6.0, 0.0, -6.0, -12.0, -18.0, -24.0, -30.0],
+                Orientation::Horizontal,
             )
             .color(Color::rgb(60, 60, 60));
 
@@ -175,8 +196,22 @@ fn peak_graph(cx: &mut Context) {
 /// Draws an oscilloscope with a grid backdrop.
 fn oscilloscope(cx: &mut Context) {
     ZStack::new(cx, |cx| {
-        Grid::new(cx, (-1.2, 1.2), 10.0, vec![0.0, 0.5, -0.5, 1.0, -1.0])
-            .color(Color::rgb(60, 60, 60));
+        Grid::new(
+            cx,
+            ValueScaling::Linear,
+            (-10., 0.),
+            vec![-1., -2., -3., -4., -5., -6., -7., -8., -9.],
+            Orientation::Vertical,
+        )
+        .color(Color::rgb(60, 60, 60));
+        Grid::new(
+            cx,
+            ValueScaling::Linear,
+            (-1.2, 1.2),
+            vec![0.0, 0.5, -0.5, 1., -1.],
+            Orientation::Horizontal,
+        )
+        .color(Color::rgb(40, 40, 40));
         Oscilloscope::new(
             cx,
             Data::oscilloscope_buffer,
