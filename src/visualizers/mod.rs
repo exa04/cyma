@@ -5,6 +5,7 @@ mod grid;
 mod lissajous;
 mod meter;
 mod oscilloscope;
+mod spectrum_analyzer;
 mod unit_ruler;
 mod waveform;
 
@@ -13,5 +14,6 @@ pub use grid::*;
 pub use lissajous::*;
 pub use meter::*;
 pub use oscilloscope::*;
+pub use spectrum_analyzer::*;
 pub use unit_ruler::*;
 pub use waveform::*;
