@@ -3,28 +3,34 @@ use nih_plug_vizia::vizia::{
     context::{Context, DrawContext},
     vg,
     view::{Canvas, Handle, View},
+    views::Orientation,
 };
 
-/// A generic grid backdrop.
+use crate::utils::ValueScaling;
+
+/// A generic grid backdrop that displays either horizontal or vertical lines.
 ///
 /// Put this grid inside a ZStack, along with your visualizer of choice.
 pub struct Grid {
-    display_range: (f32, f32),
-    x_subdivisions: f32,
-    y_lines: Vec<f32>,
+    scaling: ValueScaling,
+    range: (f32, f32),
+    lines: Vec<f32>,
+    orientation: Orientation,
 }
 
 impl Grid {
     pub fn new(
         cx: &mut Context,
-        display_range: impl Res<(f32, f32)>,
-        x_subdivisions: impl Res<f32>,
-        y_lines: impl Res<Vec<f32>>,
+        scaling: ValueScaling,
+        range: impl Res<(f32, f32)>,
+        lines: impl Res<Vec<f32>>,
+        orientation: Orientation,
     ) -> Handle<Self> {
         Self {
-            display_range: display_range.get_val(cx),
-            x_subdivisions: x_subdivisions.get_val(cx),
-            y_lines: y_lines.get_val(cx),
+            scaling,
+            range: range.get_val(cx),
+            lines: lines.get_val(cx),
+            orientation,
         }
         .build(cx, |_| {})
     }
@@ -44,47 +50,40 @@ impl View for Grid {
 
         let line_width = cx.scale_factor();
 
-        // Horizontal grid lines
         canvas.stroke_path(
             &{
                 let mut path = vg::Path::new();
 
-                for y_line in self.y_lines.iter() {
-                    // Clamp y value in range
-                    let mut y_line = y_line.clamp(self.display_range.0, self.display_range.1);
+                match self.orientation {
+                    Orientation::Horizontal => {
+                        for y_line in self.lines.iter() {
+                            let y_line = self.scaling.value_to_normalized(
+                                *y_line,
+                                self.range.0,
+                                self.range.1,
+                            );
 
-                    // Normalize peak's range
-                    y_line -= self.display_range.0;
-                    y_line /= self.display_range.1 - self.display_range.0;
+                            path.move_to(x, y + h * (1. - y_line));
+                            path.line_to(x + w, y + h * (1. - y_line));
 
-                    // Draw a line at y from left to right
-                    path.move_to(x, y + h * (1. - y_line));
-                    path.line_to(x + w, y + h * (1. - y_line));
+                            path.close();
+                        }
+                    }
+                    Orientation::Vertical => {
+                        for x_line in self.lines.iter() {
+                            let x_line = self.scaling.value_to_normalized(
+                                *x_line,
+                                self.range.0,
+                                self.range.1,
+                            );
 
-                    path.close();
-                }
+                            path.move_to(x + w * x_line, y);
+                            path.line_to(x + w * x_line, y + h);
 
-                path
-            },
-            &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
-        );
-
-        if self.x_subdivisions == 0.0 {
-            return;
-        }
-
-        // Horizontal grid lines
-        canvas.stroke_path(
-            &{
-                let mut path = vg::Path::new();
-
-                let t_delta = w / self.x_subdivisions;
-
-                for step in (1..self.x_subdivisions.ceil() as u32).map(|x| x as f32 * t_delta) {
-                    path.move_to(x + w - step, y);
-                    path.line_to(x + w - step, y + h);
-                    path.close();
-                }
+                            path.close();
+                        }
+                    }
+                };
 
                 path
             },
