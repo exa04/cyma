@@ -58,9 +58,8 @@ impl View for SpectrumAnalyzer {
         let h = bounds.h;
 
         let mut spectrum = self.spectrum.lock().unwrap();
-        let spectrum = spectrum.read();
-
-        let half_nyquist = 20_000.0;
+        let half_nyquist = spectrum.sample_rate / 2.;
+        let spectrum_output = spectrum.output.read();
 
         let foreground =
             vg::Paint::color(cx.font_color().into()).with_line_width(cx.scale_factor());
@@ -71,8 +70,8 @@ impl View for SpectrumAnalyzer {
             SpectrumAnalyzerVariant::BAR => {
                 let mut path = vg::Path::new();
 
-                for (bin_idx, magnitude) in spectrum.iter().enumerate() {
-                    let freq = (bin_idx as f32 / spectrum.len() as f32) * half_nyquist;
+                for (bin_idx, magnitude) in spectrum_output.iter().enumerate() {
+                    let freq = (bin_idx as f32 / spectrum_output.len() as f32) * half_nyquist;
 
                     // Normalize frequency
                     let freq_normalized = self.frequency_scaling.value_to_normalized(
@@ -98,7 +97,7 @@ impl View for SpectrumAnalyzer {
             }
             SpectrumAnalyzerVariant::LINE => {
                 let magnitude_normalized = self.magnitude_scaling.value_to_normalized(
-                    spectrum[0],
+                    spectrum_output[0],
                     self.magnitude_range.0,
                     self.magnitude_range.1,
                 );
@@ -106,8 +105,8 @@ impl View for SpectrumAnalyzer {
                 let mut line = vg::Path::new();
                 line.move_to(x, y + (h * (1.0 - magnitude_normalized)));
 
-                for (bin_idx, magnitude) in spectrum.iter().enumerate() {
-                    let freq = (bin_idx as f32 / spectrum.len() as f32) * half_nyquist;
+                for (bin_idx, magnitude) in spectrum_output.iter().enumerate() {
+                    let freq = (bin_idx as f32 / spectrum_output.len() as f32) * half_nyquist;
 
                     // Normalize frequency
                     let freq_normalized = self.frequency_scaling.value_to_normalized(

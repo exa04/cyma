@@ -31,7 +31,10 @@ const SPECTRUM_WINDOW_OVERLAP: usize = 2;
 /// The amplitudes of all frequency bins in a windowed FFT output.
 pub type Spectrum = [f32; SPECTRUM_WINDOW_SIZE / 2 + 1];
 /// A receiver for a spectrum computed by [`SpectrumInput`].
-pub type SpectrumOutput = triple_buffer::Output<Spectrum>;
+pub struct SpectrumOutput {
+    pub(crate) output: triple_buffer::Output<Spectrum>,
+    pub(crate) sample_rate: f32,
+}
 
 /// Continuously compute spectrums and send them to the connected [`SpectrumOutput`].
 pub struct SpectrumInput {
@@ -39,6 +42,7 @@ pub struct SpectrumInput {
     stft: util::StftHelper,
     /// The number of channels we're working on.
     num_channels: usize,
+    sample_rate: f32,
 
     /// The decay time for a bin to decrease by -12dB.
     decay: f32,
@@ -68,6 +72,7 @@ impl SpectrumInput {
         let input = Self {
             stft: util::StftHelper::new(num_channels, SPECTRUM_WINDOW_SIZE, 0),
             num_channels,
+            sample_rate: 44100.0,
 
             decay,
             // This is set in `initialize()` based on the sample rate
@@ -85,7 +90,13 @@ impl SpectrumInput {
             complex_fft_buffer: vec![Complex32::default(); SPECTRUM_WINDOW_SIZE / 2 + 1],
         };
 
-        (input, triple_buffer_output)
+        (
+            input,
+            SpectrumOutput {
+                output: triple_buffer_output,
+                sample_rate: 44100.0,
+            },
+        )
     }
 
     /// Update the smoothing using the specified sample rate. Called in `initialize()`.
@@ -98,6 +109,7 @@ impl SpectrumInput {
             * self.num_channels as f32;
         let decay_samples = (self.decay / 1000.0 * effective_sample_rate) as f64;
 
+        self.sample_rate = sample_rate;
         self.smoothing_decay_weight = 0.25f64.powf(decay_samples.recip()) as f32
     }
 
