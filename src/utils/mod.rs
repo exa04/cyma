@@ -1,8 +1,11 @@
 //! Generic utility functions and structures.
 
 mod buffers;
+mod spectrum;
 
 pub use buffers::*;
+pub use spectrum::*;
+
 use nih_plug::util::{db_to_gain, gain_to_db_fast};
 use nih_plug_vizia::vizia::binding::Res;
 use nih_plug_vizia::vizia::context::{Context, EventContext};
