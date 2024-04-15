@@ -6,7 +6,7 @@ mod spectrum;
 pub use buffers::*;
 pub use spectrum::*;
 
-use nih_plug::util::{db_to_gain, gain_to_db_fast};
+use nih_plug::util::db_to_gain;
 use nih_plug_vizia::vizia::binding::Res;
 use nih_plug_vizia::vizia::context::{Context, EventContext};
 use nih_plug_vizia::vizia::entity::Entity;
@@ -65,7 +65,10 @@ impl ValueScaling {
                 (value.log2() - minl) / range
             }
 
-            ValueScaling::Decibels => unmap(gain_to_db_fast(value)),
+            ValueScaling::Decibels => unmap({
+                const CONVERSION_FACTOR: f32 = std::f32::consts::LOG10_E * 20.0;
+                value.ln() * CONVERSION_FACTOR
+            }),
         }
         .clamp(0., 1.)
     }
