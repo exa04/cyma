@@ -17,8 +17,6 @@ pub enum SpectrumAnalyzerVariant {
     LINE,
 }
 
-// TODO: Allow custom clamping and scaling behavior
-// TODO: Allow freq / lin etc scaling
 // TODO: Allow tilting by custom dB amount (c.f. FF Pro-Q)
 impl SpectrumAnalyzer {
     pub fn new<LSpectrum>(
@@ -76,21 +74,26 @@ impl View for SpectrumAnalyzer {
                         self.frequency_scaling
                             .value_to_normalized(freq, 20., half_nyquist);
 
-                    let magnitude_db = nih_plug::util::gain_to_db(*magnitude);
-                    let height = ((magnitude_db + 80.0) / 100.0).clamp(0.0, 1.0);
+                    let magnitude_normalized = self
+                        .magnitude_scaling
+                        .value_to_normalized(*magnitude, -80., 6.);
 
-                    path.move_to(x + (w * freq_normalized), y + (h * (1.0 - height)));
+                    path.move_to(
+                        x + (w * freq_normalized),
+                        y + (h * (1.0 - magnitude_normalized)),
+                    );
                     path.line_to(x + (w * freq_normalized), y + h);
                 }
 
                 canvas.stroke_path(&path, &foreground);
             }
             SpectrumAnalyzerVariant::LINE => {
-                let mut magnitude_db = nih_plug::util::gain_to_db(spectrum[0]);
-                let mut height = ((magnitude_db + 80.0) / 100.0).clamp(0.0, 1.0);
+                let magnitude_normalized =
+                    self.magnitude_scaling
+                        .value_to_normalized(spectrum[0], -80., 6.);
 
                 let mut line = vg::Path::new();
-                line.move_to(x, y + (h * (1.0 - height)));
+                line.move_to(x, y + (h * (1.0 - magnitude_normalized)));
 
                 for (bin_idx, magnitude) in spectrum.iter().enumerate() {
                     let freq = (bin_idx as f32 / spectrum.len() as f32) * half_nyquist;
@@ -100,10 +103,14 @@ impl View for SpectrumAnalyzer {
                         self.frequency_scaling
                             .value_to_normalized(freq, 20., half_nyquist);
 
-                    magnitude_db = nih_plug::util::gain_to_db(*magnitude);
-                    height = ((magnitude_db + 80.0) / 100.0).clamp(0.0, 1.0);
+                    let magnitude_normalized = self
+                        .magnitude_scaling
+                        .value_to_normalized(*magnitude, -80., 6.);
 
-                    line.line_to(x + (w * freq_normalized), y + (h * (1.0 - height)));
+                    line.line_to(
+                        x + (w * freq_normalized),
+                        y + (h * (1.0 - magnitude_normalized)),
+                    );
                 }
 
                 let mut fill = line.clone();
