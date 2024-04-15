@@ -9,7 +9,9 @@ pub struct SpectrumAnalyzer {
     spectrum: Arc<Mutex<SpectrumOutput>>,
     variant: SpectrumAnalyzerVariant,
     frequency_scaling: ValueScaling,
+    frequency_range: (f32, f32),
     magnitude_scaling: ValueScaling,
+    magnitude_range: (f32, f32),
 }
 
 pub enum SpectrumAnalyzerVariant {
@@ -17,14 +19,15 @@ pub enum SpectrumAnalyzerVariant {
     LINE,
 }
 
-// TODO: Allow tilting by custom dB amount (c.f. FF Pro-Q)
 impl SpectrumAnalyzer {
     pub fn new<LSpectrum>(
         cx: &mut Context,
         spectrum: LSpectrum,
         variant: SpectrumAnalyzerVariant,
         frequency_scaling: ValueScaling,
+        frequency_range: (f32, f32),
         magnitude_scaling: ValueScaling,
+        magnitude_range: (f32, f32),
     ) -> Handle<Self>
     where
         LSpectrum: Lens<Target = Arc<Mutex<SpectrumOutput>>>,
@@ -33,7 +36,9 @@ impl SpectrumAnalyzer {
             spectrum: spectrum.get(cx),
             variant,
             frequency_scaling,
+            frequency_range,
             magnitude_scaling,
+            magnitude_range,
         }
         .build(cx, |_cx| ())
     }
@@ -70,13 +75,17 @@ impl View for SpectrumAnalyzer {
                     let freq = (bin_idx as f32 / spectrum.len() as f32) * half_nyquist;
 
                     // Normalize frequency
-                    let freq_normalized =
-                        self.frequency_scaling
-                            .value_to_normalized(freq, 20., half_nyquist);
+                    let freq_normalized = self.frequency_scaling.value_to_normalized(
+                        freq,
+                        self.frequency_range.0,
+                        self.frequency_range.1,
+                    );
 
-                    let magnitude_normalized = self
-                        .magnitude_scaling
-                        .value_to_normalized(*magnitude, -80., 6.);
+                    let magnitude_normalized = self.magnitude_scaling.value_to_normalized(
+                        *magnitude,
+                        self.magnitude_range.0,
+                        self.magnitude_range.1,
+                    );
 
                     path.move_to(
                         x + (w * freq_normalized),
@@ -88,9 +97,11 @@ impl View for SpectrumAnalyzer {
                 canvas.stroke_path(&path, &foreground);
             }
             SpectrumAnalyzerVariant::LINE => {
-                let magnitude_normalized =
-                    self.magnitude_scaling
-                        .value_to_normalized(spectrum[0], -80., 6.);
+                let magnitude_normalized = self.magnitude_scaling.value_to_normalized(
+                    spectrum[0],
+                    self.magnitude_range.0,
+                    self.magnitude_range.1,
+                );
 
                 let mut line = vg::Path::new();
                 line.move_to(x, y + (h * (1.0 - magnitude_normalized)));
@@ -99,13 +110,17 @@ impl View for SpectrumAnalyzer {
                     let freq = (bin_idx as f32 / spectrum.len() as f32) * half_nyquist;
 
                     // Normalize frequency
-                    let freq_normalized =
-                        self.frequency_scaling
-                            .value_to_normalized(freq, 20., half_nyquist);
+                    let freq_normalized = self.frequency_scaling.value_to_normalized(
+                        freq,
+                        self.frequency_range.0,
+                        self.frequency_range.1,
+                    );
 
-                    let magnitude_normalized = self
-                        .magnitude_scaling
-                        .value_to_normalized(*magnitude, -80., 6.);
+                    let magnitude_normalized = self.magnitude_scaling.value_to_normalized(
+                        *magnitude,
+                        self.magnitude_range.0,
+                        self.magnitude_range.1,
+                    );
 
                     line.line_to(
                         x + (w * freq_normalized),

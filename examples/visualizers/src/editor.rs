@@ -74,7 +74,9 @@ fn spectrum_analyzer(cx: &mut Context) {
             Data::spectrum,
             SpectrumAnalyzerVariant::LINE,
             ValueScaling::Frequency,
+            (10., 21_000.),
             ValueScaling::Decibels,
+            (-80., 6.),
         )
         .color(Color::rgba(255, 255, 255, 160))
         .background_color(Color::rgba(255, 255, 255, 60));
