@@ -44,7 +44,7 @@ where
     I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
     fn element(&self) -> Option<&'static str> {
-        None
+        Some("meter")
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();

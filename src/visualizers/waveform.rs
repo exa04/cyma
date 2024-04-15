@@ -27,7 +27,7 @@ where
     V: Lens<Target = Arc<Mutex<Vec<f32>>>>,
 {
     fn element(&self) -> Option<&'static str> {
-        Some("22-visualizer")
+        Some("waveform")
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();

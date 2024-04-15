@@ -32,7 +32,7 @@ impl Grid {
 
 impl View for Grid {
     fn element(&self) -> Option<&'static str> {
-        None
+        Some("grid")
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();

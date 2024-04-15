@@ -58,7 +58,7 @@ where
     B: Lens<Target = Arc<Mutex<WaveformBuffer>>>,
 {
     fn element(&self) -> Option<&'static str> {
-        Some("22-visualizer")
+        Some("oscilloscope")
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();

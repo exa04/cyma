@@ -51,6 +51,6 @@ impl UnitRuler {
 
 impl View for UnitRuler {
     fn element(&self) -> Option<&'static str> {
-        None
+        Some("unit-ruler")
     }
 }

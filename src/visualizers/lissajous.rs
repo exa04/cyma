@@ -89,7 +89,7 @@ impl LissajousGrid {
 
 impl View for LissajousGrid {
     fn element(&self) -> Option<&'static str> {
-        None
+        Some("lissajous")
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();
