@@ -1,4 +1,5 @@
 use nih_plug_vizia::vizia::prelude::*;
+use crate::utils::ValueScaling;
 
 /// A generic ruler.
 pub struct UnitRuler {}
@@ -7,6 +8,7 @@ impl UnitRuler {
     pub fn new<'a>(
         cx: &mut Context,
         display_range: impl Res<(f32, f32)>,
+        scaling: ValueScaling,
         values: impl Res<Vec<(f32, &'static str)>>,
         orientation: Orientation,
     ) -> Handle<Self> {
@@ -16,13 +18,8 @@ impl UnitRuler {
                 .get_val(cx)
                 .into_iter()
                 .map(|v| {
-                    // Clamp
-                    let mut value = v.0.clamp(display_range.0, display_range.1);
-                    // Normalize
-                    value -= display_range.0;
-                    value /= display_range.1 - display_range.0;
-
-                    (value, v.1)
+                    // Normalize the value according to the provided scaling, within the provided range
+                    (scaling.value_to_normalized(v.0, display_range.0, display_range.1), v.1)
                 })
                 .collect::<Vec<(f32, &'static str)>>();
             ZStack::new(cx, |cx| {
