@@ -5,3 +5,8 @@
 pub mod controls;
 pub mod utils;
 pub mod visualizers;
+
+pub mod prelude {
+    pub use crate::utils::ValueScaling;
+    pub use crate::utils::VisualizerBuffer;
+}
