@@ -67,6 +67,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
     })
 }
 
+// Draws a spectrum analyzer with a grid backdrop and a frequency ruler.
 fn spectrum_analyzer(cx: &mut Context) {
     ZStack::new(cx, |cx| {
         Grid::new(
@@ -164,6 +165,7 @@ fn peak_graph(cx: &mut Context) {
         UnitRuler::new(
             cx,
             (-32.0, 8.0),
+            ValueScaling::Linear,
             vec![
                 (6.0, "6db"),
                 (0.0, "0db"),
