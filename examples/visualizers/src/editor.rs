@@ -4,7 +4,7 @@ use cyma::{
     utils::{PeakBuffer, RingBuffer, SpectrumOutput, ValueScaling, WaveformBuffer},
     visualizers::{
         Graph, Grid, Lissajous, LissajousGrid, Meter, Oscilloscope, SpectrumAnalyzer,
-        SpectrumAnalyzerVariant, UnitRuler, Waveform,
+        SpectrumAnalyzerModifiers, SpectrumAnalyzerVariant, UnitRuler, Waveform,
     },
 };
 use nih_plug::editor::Editor;
@@ -98,8 +98,8 @@ fn spectrum_analyzer(cx: &mut Context) {
             (10., 21_000.),
             ValueScaling::Decibels,
             (-110., 6.),
-            Some(4.5),
         )
+        .with_slope(4.5)
         .color(Color::rgba(255, 255, 255, 160))
         .background_color(Color::rgba(255, 255, 255, 60));
         // Displays a fade to the background color at the bottom, as a backdrop for the unit ruler

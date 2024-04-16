@@ -1,6 +1,5 @@
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::vizia::vg;
-use realfft::num_traits::Pow;
 use std::sync::{Arc, Mutex};
 
 use crate::utils::SpectrumOutput;
@@ -30,7 +29,6 @@ impl SpectrumAnalyzer {
         frequency_range: (f32, f32),
         magnitude_scaling: ValueScaling,
         magnitude_range: (f32, f32),
-        slope: Option<f32>,
     ) -> Handle<Self>
     where
         LSpectrum: Lens<Target = Arc<Mutex<SpectrumOutput>>>,
@@ -42,7 +40,7 @@ impl SpectrumAnalyzer {
             frequency_range,
             magnitude_scaling,
             magnitude_range,
-            slope,
+            slope: None,
         }
         .build(cx, |_cx| ())
     }
@@ -187,5 +185,19 @@ impl View for SpectrumAnalyzer {
                 canvas.stroke_path(&line, &foreground);
             }
         }
+    }
+}
+
+pub trait SpectrumAnalyzerModifiers {
+    fn with_slope(self, slope: f32) -> Self;
+}
+impl SpectrumAnalyzerModifiers for Handle<'_, SpectrumAnalyzer> {
+    /// Sets a slope in db/oct.
+    ///
+    /// Useful for spectrum analyzers that need to emphasize the highs more, in order to
+    /// match a certain noise profile. For example, you can set the slope to 4.5 db/oct
+    /// to approximate the spectral profile of brownian noise.
+    fn with_slope(self, slope: f32) -> Self {
+        self.modify(|spectrum| spectrum.slope = Some(slope))
     }
 }
