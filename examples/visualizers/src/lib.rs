@@ -1,6 +1,5 @@
-use cyma::utils::{
-    PeakBuffer, RingBuffer, SpectrumInput, SpectrumOutput, VisualizerBuffer, WaveformBuffer,
-};
+use cyma::prelude::*;
+use cyma::utils::{PeakBuffer, RingBuffer, SpectrumInput, SpectrumOutput, WaveformBuffer};
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::{

@@ -1,7 +1,6 @@
-use std::sync::{Arc, Mutex};
-
+use cyma::prelude::*;
 use cyma::{
-    utils::{PeakBuffer, RingBuffer, SpectrumOutput, ValueScaling, WaveformBuffer},
+    utils::{PeakBuffer, RingBuffer, SpectrumOutput, WaveformBuffer},
     visualizers::{
         Graph, Grid, Lissajous, LissajousGrid, Meter, Oscilloscope, SpectrumAnalyzer,
         SpectrumAnalyzerModifiers, SpectrumAnalyzerVariant, UnitRuler, Waveform,
@@ -9,6 +8,7 @@ use cyma::{
 };
 use nih_plug::editor::Editor;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
+use std::sync::{Arc, Mutex};
 
 #[derive(Lens, Clone)]
 pub(crate) struct Data {
