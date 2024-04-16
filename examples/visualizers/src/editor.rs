@@ -67,6 +67,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
     })
 }
 
+// Draws a spectrum analyzer with a grid backdrop and a frequency ruler.
 fn spectrum_analyzer(cx: &mut Context) {
     ZStack::new(cx, |cx| {
         Grid::new(
@@ -101,6 +102,37 @@ fn spectrum_analyzer(cx: &mut Context) {
         )
         .color(Color::rgba(255, 255, 255, 160))
         .background_color(Color::rgba(255, 255, 255, 60));
+        // Displays a fade to the background color at the bottom, as a backdrop for the unit ruler
+        Element::new(cx)
+            .background_gradient(
+                LinearGradientBuilder::with_direction("to bottom")
+                    .add_stop(Color::transparent())
+                    .add_stop(Color::rgb(16, 16, 16)),
+            )
+            .height(Pixels(48.))
+            .top(Stretch(1.));
+        UnitRuler::new(
+            cx,
+            (10., 21_000.),
+            ValueScaling::Frequency,
+            vec![
+                (20., "20"),
+                (50., "50"),
+                (100., "100"),
+                (200., "200"),
+                (500., "500"),
+                (1_000., "1k"),
+                (2_000., "2k"),
+                (5_000., "5k"),
+                (10_000., "10k"),
+            ],
+            Orientation::Horizontal,
+        )
+        .height(Pixels(16.))
+        .font_size(12.)
+        .color(Color::rgb(160, 160, 160))
+        .top(Stretch(1.))
+        .bottom(Pixels(8.));
     })
     .background_color(Color::rgb(16, 16, 16))
     .border_color(Color::rgb(80, 80, 80))
@@ -164,6 +196,7 @@ fn peak_graph(cx: &mut Context) {
         UnitRuler::new(
             cx,
             (-32.0, 8.0),
+            ValueScaling::Linear,
             vec![
                 (6.0, "6db"),
                 (0.0, "0db"),
