@@ -4,8 +4,6 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use crate::utils::{ValueScaling, VisualizerBuffer, WaveformBuffer};
 
-// TODO: Allow setting a range, analogous to PeakGraph
-
 /// A waveform display for real-time input.
 ///
 /// This visualizer is particularly useful when visualizing audio data at a
