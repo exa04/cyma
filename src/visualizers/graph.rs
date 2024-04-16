@@ -17,6 +17,7 @@ where
     buffer: L,
     display_range: (f32, f32),
     scaling: ValueScaling,
+    fill_from_top: bool,
 }
 
 impl<L, I> Graph<L, I>
@@ -34,6 +35,7 @@ where
             buffer,
             display_range: display_range.get_val(cx),
             scaling: scaling.get_val(cx),
+            fill_from_top: false,
         }
         .build(cx, |_| {})
     }
@@ -86,9 +88,15 @@ where
 
         let mut fill = stroke.clone();
 
-        fill.line_to(x + w, y + h);
-        fill.line_to(x, y + h);
-        fill.close();
+        if self.fill_from_top {
+            fill.line_to(x + w, y);
+            fill.line_to(x, y);
+            fill.close();
+        } else {
+            fill.line_to(x + w, y + h);
+            fill.line_to(x, y + h);
+            fill.close();
+        }
 
         canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
 
@@ -96,5 +104,24 @@ where
             &stroke,
             &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
         );
+    }
+}
+
+pub trait GraphModifiers {
+    /// Allows for the grid to be filled from the top instead of the bottom.
+    ///
+    /// This is useful for certain graphs like gain reduction meters.
+    fn should_fill_from_top(self, fill_from_top: bool) -> Self;
+}
+
+impl<'a, L, I> GraphModifiers for Handle<'a, Graph<L, I>>
+where
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
+{
+    fn should_fill_from_top(self, fill_from_top: bool) -> Self {
+        self.modify(|graph| {
+            graph.fill_from_top = fill_from_top;
+        })
     }
 }
