@@ -19,7 +19,7 @@ lazy_static! {
     static ref TRANSLATE_COS: f32 = (PI / 4.).cos();
 }
 
-/// A lissajous for stereo audio data.
+/// Lissajous for stereo audio data.
 ///
 /// The further points are from the horizontal middle, the more stereo your signal
 /// is. If they are closer to the top or bottom, your signal has a positive or a

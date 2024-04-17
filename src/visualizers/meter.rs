@@ -5,7 +5,7 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 use crate::utils::ValueScaling;
 use crate::utils::VisualizerBuffer;
 
-/// A Meter that displays the data inside a [`VisualizerBuffer`].
+/// Meter that displays the data inside a [`VisualizerBuffer`].
 ///
 /// Useful for peak meters, loudness meters, etc.
 ///

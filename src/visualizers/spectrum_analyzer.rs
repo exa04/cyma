@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use crate::utils::SpectrumOutput;
 use crate::utils::ValueScaling;
 
-/// A spectrum analyzer that shows the magnitude of each frequency inside a
+/// Spectrum analyzer that shows the magnitude of each frequency bin inside a
 /// [`SpectrumOutput`].
 ///
 /// Can either display magnitude as discrete bars, or as a graph.

@@ -4,7 +4,7 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use crate::utils::{ValueScaling, VisualizerBuffer, WaveformBuffer};
 
-/// A waveform display for real-time input.
+/// Waveform display for real-time input.
 ///
 /// This visualizer is particularly useful when visualizing audio data at a
 /// high sample rate, such as 44.1kHz, in a much smaller view. It does not naively

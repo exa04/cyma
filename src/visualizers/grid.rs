@@ -8,7 +8,7 @@ use nih_plug_vizia::vizia::{
 
 use crate::utils::ValueScaling;
 
-/// A generic grid backdrop that displays either horizontal or vertical lines.
+/// Generic grid backdrop that displays either horizontal or vertical lines.
 ///
 /// Put this grid inside a ZStack, along with your visualizer of choice.
 ///

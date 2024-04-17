@@ -1,7 +1,7 @@
 use crate::utils::ValueScaling;
 use nih_plug_vizia::vizia::prelude::*;
 
-/// A generic ruler.
+/// Generic ruler that shows markers for certain values.
 ///
 /// Takes in a display range and scaling, as well as values within that range, where
 /// unit markers will be displayed.

@@ -8,7 +8,7 @@ use nih_plug_vizia::vizia::{
 };
 use std::sync::{Arc, Mutex};
 
-/// A real-time graph displaying information that is stored inside a buffer
+/// Real-time graph displaying information that is stored inside a buffer
 ///
 /// Use this view to construct peak graphs, loudness graphs, or any other graph that
 /// displays the data inside a [`VisualizerBuffer`].
