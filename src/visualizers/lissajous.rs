@@ -31,7 +31,7 @@ lazy_static! {
 /// [Wikipedia entry](https://en.wikipedia.org/wiki/Lissajous_curve) on them.
 ///
 /// # Examples
-/// 
+///
 /// ## Basic Lissajous
 ///
 /// For this example, set up a [`RingBuffer<(f32, f32)>`](crate::utils::RingBuffer)
@@ -40,12 +40,12 @@ lazy_static! {
 /// ```
 /// Lissajous::new(cx, Data::lissajous_buffer).color(Color::rgb(160, 160, 160));
 /// ```
-/// 
+///
 /// ## Grid and Labels
 ///
 /// If you want to take it a step further, you can add a [`LissajousGrid`] and
 /// labels to your Lissajous.
-/// 
+///
 /// ```
 /// ZStack::new(cx, |cx| {
 ///     LissajousGrid::new(cx)
