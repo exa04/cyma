@@ -7,10 +7,10 @@
 # Guides
 
 - [Composing a Peak Graph](./peak_graph/overview.md)
-    - [Basic Setup](./peak_graph/setup.md)
-    - [Styling the Graph](./peak_graph/styling.md)
+    - [Setting up a PeakBuffer](./peak_graph/peak_buffer_setup.md)
+    - [Displaying a Graph](./peak_graph/graph_setup.md)
     - [Adding Grid Lines](./peak_graph/composing.md)
-    - [Plotting the Loudness](./peak_graph/loudness.md)
+    - [Plotting Loudness]()
 - [Building a Filter UI]()
     - [Adding Some Knobs]()
     - [Adding a Spectrogram]()
