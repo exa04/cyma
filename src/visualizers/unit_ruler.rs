@@ -5,7 +5,7 @@ use nih_plug_vizia::vizia::prelude::*;
 ///
 /// Takes in a display range and scaling, as well as values within that range, where
 /// unit markers will be displayed.
-/// 
+///
 /// ```
 /// UnitRuler::new(
 ///     cx,
