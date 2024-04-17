@@ -11,6 +11,31 @@ use crate::utils::ValueScaling;
 /// A generic grid backdrop that displays either horizontal or vertical lines.
 ///
 /// Put this grid inside a ZStack, along with your visualizer of choice.
+///
+/// # Example
+///
+/// Here's how to add a `Grid` as a backdrop to a `Graph`.
+///
+/// ```
+/// ZStack::new(cx, |cx| {
+///     Grid::new(
+///         cx,
+///         ValueScaling::Linear,
+///         (-32., 8.),
+///         vec![6.0, 0.0, -6.0, -12.0, -18.0, -24.0, -30.0],
+///         Orientation::Horizontal,
+///     )
+///     .color(Color::rgb(60, 60, 60));
+///
+///     Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
+///         .color(Color::rgba(255, 255, 255, 160))
+///         .background_color(Color::rgba(255, 255, 255, 60));
+/// })
+/// .background_color(Color::rgb(16, 16, 16));
+/// ```
+///
+/// Note that both the `Graph` and `Grid` have the same range, which is necessary
+/// for them to scale correctly.
 pub struct Grid {
     scaling: ValueScaling,
     range: (f32, f32),
