@@ -24,7 +24,7 @@ plug-in UIs.
 
 Here's a demo:
 
-Read the <a href="https://223230.github.io/cyma/">docs</a> (incomplete)
+https://github.com/223230/cyma/assets/68156346/a40286ca-22e3-424d-93b6-56ff1a29ebdc
 
 ## 🧰 What's included
 
@@ -54,41 +54,35 @@ feature request so it can be added!
 
 Here's how to create a basic oscilloscope with a grid background.
 
-![Semi-transparent oscilloscope graph with a grid behind it](doc/example.png)
+![Oscilloscope](doc/example.png)
 
 ```rust
-fn oscilloscope(cx: &mut Context) {
-    ZStack::new(cx, |cx| {
-        Grid::new(cx, (-1.2, 1.2), 10.0, vec![0.0, 0.5, -0.5, 1.0, -1.0])
-            .color(Color::rgb(60, 60, 60));
-        Oscilloscope::new(cx, Data::oscilloscope_buffer, (0., 1.2), false)
-            .color(Color::rgba(0, 0, 0, 0))
-            .background_color(Color::rgba(255, 255, 255, 120));
-    })
-    .border_color(Color::rgb(80, 80, 80))
-    .border_width(Pixels(1.))
-    .background_color(Color::rgb(16, 16, 16));
-}
+Oscilloscope::new(
+    cx,
+    Data::oscilloscope_buffer,
+    (-1.2, 1.2),
+    ValueScaling::Linear,
+)
+.background_color(Color::rgba(120, 120, 120));
 ```
 
-Here, `Data::oscilloscope_buffer` is an `Arc<Mutex<WaveformBuffer>>`, a special
-buffer that allows for your audio to be sent to the `Oscilloscope` in a much
-smaller package, while retaining peak information. In the above screenshot, the
-buffer was configured to be 512 samples long, and it represents 10 seconds of
-audio at 44.1 kHz.
+Here, `Data::oscilloscope_buffer` is an `Arc<Mutex<WaveformBuffer>>`, a buffer
+that allows for your audio to be sent to the `Oscilloscope` in a much smaller
+package, while retaining peak information. Here, it's configured to be 512
+samples long, and it represents 10 seconds of audio at 44.1 kHz.
 
 It's very plug-and-play, you only need to call `enqueue_buffer()` in your
 plugin's process function to use it!
 
-Check out the [examples](examples) to see some more in-depth demos of Cyma.
+Check out the book, or the [examples](examples) to learn how to work with these
+buffers.
 
 ## 🍔 Composing views
 
 A core feature of Cyma is composability.
 
 For example, by combining views such as the `Grid`, `UnitRuler`, and
-`PeakGraph`, you can make this real-time peak analyzer that you can style
-however you want.
+`PeakGraph`, you can make this real-time peak analyzer.
 
 ![Peak visualizer](doc/composability_demo.png)
 
@@ -98,23 +92,23 @@ fn peak_graph(cx: &mut Context) {
         ZStack::new(cx, |cx| {
             Grid::new(
                 cx,
-                (-32.0, 8.0),
-                0.0,
+                ValueScaling::Linear,
+                (-32., 8.),
                 vec![6.0, 0.0, -6.0, -12.0, -18.0, -24.0, -30.0],
+                Orientation::Horizontal,
             )
             .color(Color::rgb(60, 60, 60));
 
-            PeakGraph::new(cx, Data::peak_buffer, (-32.0, 8.0), true)
+            Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
                 .color(Color::rgba(255, 255, 255, 160))
                 .background_color(Color::rgba(255, 255, 255, 60));
         })
-        .border_color(Color::rgb(80, 80, 80))
-        .border_width(Pixels(1.))
         .background_color(Color::rgb(16, 16, 16));
 
         UnitRuler::new(
             cx,
             (-32.0, 8.0),
+            ValueScaling::Linear,
             vec![
                 (6.0, "6db"),
                 (0.0, "0db"),
