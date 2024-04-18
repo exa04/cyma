@@ -136,10 +136,28 @@ fn peak_graph(cx: &mut Context) {
 
 ## 🙋 Contributing
 
-This project is in a really early stage, which is why I won't be accepting code
-contributions just yet. If you want to contribute, you can feel free to play
-around with it and report any bugs, glitches, or other oddities by filing an
-[issue](https://github.com/223230/cyma/issues).
+Here are some contributing guidelines. If you have questions about Cyma, need
+help with something, or want to show off what you built using Cyma, head over to
+the [Discussions](https://github.com/223230/cyma/discussions) tab.
+
+### 📋 Issues
+
+Check the [issues](https://github.com/223230/cyma/issues) tab to see if a
+similar issue has already been filed. If not,
+[file](https://github.com/223230/cyma/issues/new/choose) one yourself!
+
+### 🧑‍💻 Code contributions
+
+Code contributions are always welcome! Cyma follows a `feature-branch` workflow,
+so any features and bug fixes are introduced via pull request from a feature
+branch. 
+
+#### Do you want to contribute to a specific issue?
+
+If you want to contribute to an existing issue, check if a pull request has
+already been made. If not, you can fork the repository and then create a pull
+request with your changes. Link the related issue under the PR's *Development*
+section.
 
 ## 📃 License
 
