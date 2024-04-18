@@ -13,12 +13,7 @@
   Composable views and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
 </div>
 
-<hr/>
-
-> [!CAUTION]
-> **Don't use this library in production!** It is *very* early in development and a stable release is yet to be made. If you want to use it, expect frequent breaking changes. Wanna contribute? [Read this.](#-contributing)
-
-<hr/>
+---
 
 ## ✨ Overview
 
