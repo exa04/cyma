@@ -113,8 +113,9 @@ where
         }
 
         fill.close();
-        canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
-        canvas.stroke_path(&bottom_stroke, &vg::Paint::color(cx.font_color().into()));
-        canvas.stroke_path(&top_stroke, &vg::Paint::color(cx.font_color().into()));
+        canvas.fill_path(
+            &fill,
+            &vg::Paint::color(cx.font_color().into()).with_line_width(0.),
+        );
     }
 }

@@ -252,8 +252,7 @@ fn oscilloscope(cx: &mut Context) {
             (-1.2, 1.2),
             ValueScaling::Linear,
         )
-        .color(Color::rgba(0, 0, 0, 0))
-        .background_color(Color::rgba(255, 255, 255, 120));
+        .color(Color::rgba(255, 255, 255, 120));
     })
     .border_color(Color::rgb(80, 80, 80))
     .border_width(Pixels(1.))
