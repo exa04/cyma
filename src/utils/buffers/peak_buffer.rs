@@ -21,17 +21,15 @@ pub struct PeakBuffer {
 }
 
 impl PeakBuffer {
-    pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
-        let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
     pub fn new(size: usize, duration: f32, decay: f32) -> Self {
         let decay_weight = Self::decay_weight(decay, size, duration);
         Self {
             buffer: RingBuffer::<f32>::new(size),
             max_acc: 0.,
-            sample_delta,
-            sample_rate,
+            sample_delta: 0.,
+            sample_rate: 0.,
             duration,
-            t: sample_delta,
+            t: 0.,
             decay,
             decay_weight,
         }
@@ -39,26 +37,33 @@ impl PeakBuffer {
 
     pub fn set_decay(self: &mut Self, decay: f32) {
         self.decay = decay;
+        self.update();
     }
 
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 
     pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, duration);
+        self.update();
         self.buffer.clear();
     }
 
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
-        (sample_rate * duration) / size as f32
+        ((sample_rate as f64 * duration as f64) / size as f64) as f32
     }
 
     fn decay_weight(decay: f32, size: usize, duration: f32) -> f32 {
         0.25f64.powf((decay as f64 / 1000. * (size as f64 / duration as f64)).recip()) as f32
+    }
+
+    fn update(self: &mut Self) {
+        self.decay_weight = Self::decay_weight(self.decay, self.buffer.len(), self.duration);
+        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, self.duration);
+        self.t = self.sample_delta;
     }
 }
 
@@ -67,7 +72,6 @@ impl VisualizerBuffer<f32> for PeakBuffer {
         let value = value.abs();
         self.t -= 1.0;
         if self.t < 0.0 {
-            self.buffer.enqueue(self.max_acc);
             let last_peak = self.buffer.peek();
             let mut peak = self.max_acc;
 
@@ -122,7 +126,7 @@ impl VisualizerBuffer<f32> for PeakBuffer {
             return;
         };
         self.buffer.grow(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 
@@ -132,7 +136,7 @@ impl VisualizerBuffer<f32> for PeakBuffer {
             return;
         };
         self.buffer.shrink(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 }
@@ -147,24 +151,5 @@ impl Index<usize> for PeakBuffer {
 impl IndexMut<usize> for PeakBuffer {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.buffer.index_mut(index)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::utils::VisualizerBuffer;
-
-    use super::PeakBuffer;
-
-    #[test]
-    fn enqueue() {
-        let mut rb = PeakBuffer::new(16, 4.0, 8.0);
-
-        rb.enqueue(2.);
-        rb.enqueue(9.);
-        rb.enqueue(19.);
-        rb.enqueue(-10.);
-        rb.enqueue(4.);
-        rb.enqueue(6.);
     }
 }
