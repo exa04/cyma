@@ -19,11 +19,10 @@ pub struct PeakGraphPlugin {
 Now, we need to provide a default for this peak buffer inside the `default()`
 function. So we'll call `PeakBuffer::new()`.
 
-This function takes in a size, sample rate, and duration, and creates a
-`PeakBuffer` according to these parameters. Based on them, the buffer enqueues
-the last seconds of audio. It's usually kept quite small - we'll go with 800
-samples over 10 seconds. As for our sample rate, we'll just go with 44.1 kHz for
-now.
+This function takes in a size, duration, and a decay. Based on these parameters, it
+creates a `PeakBuffer`. The buffer itself is usually kept quite small - we'll go
+with 800 samples over 10 seconds. As for our decay, we'll go with 50ms. This will
+make it still feel snappy, but extremely short peaks will be easier to make out.
 
 ```rust
 // lib.rs
@@ -31,7 +30,7 @@ impl Default for PeakGraphPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 44100.0, 10.0))),
+            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 10.0, 50.0))),
         }
     }
 }
@@ -78,6 +77,7 @@ Now, we can add our peak buffer to the editor's `Data` struct.
 pub(crate) struct Data {
     peak_buffer: Arc<Mutex<PeakBuffer>>,
 }
+
 impl Data {
     pub(crate) fn new(peak_buffer: Arc<Mutex<PeakBuffer>>) -> Self {
         Self { peak_buffer }
