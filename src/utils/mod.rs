@@ -46,12 +46,6 @@ impl ValueScaling {
     }
 
     pub fn value_to_normalized(&self, value: f32, min: f32, max: f32) -> f32 {
-        if value <= min {
-            return 0.0;
-        } else if value >= max {
-            return 1.0;
-        }
-
         let unmap = |x: f32| -> f32 { (x - min) / (max - min) };
 
         match self {
