@@ -24,7 +24,11 @@ plug-in UIs.
 
 Here's a demo:
 
-https://github.com/223230/cyma/assets/68156346/a40286ca-22e3-424d-93b6-56ff1a29ebdc
+https://github.com/223230/cyma/assets/68156346/7911ef05-c229-4f08-8d70-41c5475c6379
+
+<sub>Excuse the poor frame rate, my PC is slow at media encoding :(</sub>
+
+Wanna see the code behind this? It's [this example](./examples/visualizers)!
 
 ## 🧰 What's included
 
