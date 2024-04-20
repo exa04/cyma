@@ -11,6 +11,9 @@ members = [
     "examples/visualizers", "examples/peak_graph",
 ]
 
+[lib]
+doctest = false
+
 [dependencies]
 nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git" }

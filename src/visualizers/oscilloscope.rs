@@ -4,18 +4,25 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use crate::utils::{ValueScaling, VisualizerBuffer, WaveformBuffer};
 
-/// A waveform display for real-time input.
+/// Waveform display for real-time input.
 ///
 /// This visualizer is particularly useful when visualizing audio data at a
-/// high sample rate, such as 44.1kHz, in a much smaller view. It does not
+/// high sample rate, such as 44.1kHz, in a much smaller view. It does not naively
 /// downsample the audio, which is why, even for very small sizes, it still
 /// correctly displays the peak data.
 ///
-/// # How to use
+/// # Example
 ///
-/// To use this Visualizer, you need a [`WaveformBuffer`](`crate::utils::WaveformBuffer`)
-/// that you write to inside your plugin code, and then send to the editor
-/// thread - wrap it in an `Arc<Mutex>` to send it.
+/// ```
+/// Oscilloscope::new(
+///     cx,
+///     Data::oscilloscope_buffer,
+///     (-1.2, 1.2),
+///     ValueScaling::Linear,
+/// )
+/// .color(Color::rgba(0, 0, 0, 0))
+/// .background_color(Color::rgba(255, 255, 255, 120));
+/// ```
 ///
 pub struct Oscilloscope<B>
 where

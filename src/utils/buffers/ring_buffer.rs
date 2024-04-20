@@ -8,9 +8,6 @@ use std::ops::{Index, IndexMut};
 /// oldest element is popped off the head of the buffer. Due to its fixed-size
 /// nature, the ring buffer is very fast and doesn't dynamically reallocate
 /// itself, or move any elements around when an element is added.
-///
-/// It is foundational to visualizers, certain audio effects, and many other
-/// real-time applications where elements need to be sequentally enqueued.
 #[derive(Clone, PartialEq, Eq, Default, Hash, Debug)]
 pub struct RingBuffer<T> {
     head: usize,

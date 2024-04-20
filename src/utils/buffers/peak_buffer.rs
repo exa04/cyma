@@ -2,6 +2,15 @@ use std::ops::{Index, IndexMut};
 
 use super::{RingBuffer, VisualizerBuffer};
 
+/// Stores peak information.
+///
+/// This buffer stores the absolute maxima of a signal - i.e. the peaks - over time.
+/// It can apply a decay to them, making it useful for peak visualizers such as peak
+/// graphs and meters.
+///
+/// The `PeakBuffer` needs to be provided a sample rate after initialization - do
+/// this inside your [`initialize()`](nih_plug::plugin::Plugin::initialize)
+/// function.
 #[derive(Clone, Default)]
 pub struct PeakBuffer {
     buffer: RingBuffer<f32>,
@@ -21,6 +30,15 @@ pub struct PeakBuffer {
 }
 
 impl PeakBuffer {
+    /// Constructs a new `PeakBuffer`.
+    ///
+    /// * `size` - The length of the buffer in samples; Usually, this can be kept < 2000
+    /// * `duration` - The duration (in seconds) of the audio data inside the buffer
+    /// * `decay` - The time it takes for a sample inside the buffer to decrease by -12dB, in milliseconds
+    ///
+    /// The buffer needs to be provided a sample rate after initialization - do this by
+    /// calling [`set_sample_rate`](Self::set_sample_rate) inside your
+    /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function.
     pub fn new(size: usize, duration: f32, decay: f32) -> Self {
         let decay_weight = Self::decay_weight(decay, size, duration);
         Self {
@@ -35,17 +53,46 @@ impl PeakBuffer {
         }
     }
 
+    /// Sets the decay time of the `PeakBuffer`.
+    ///
+    /// * `decay` - The time it takes for a sample inside the buffer to decrease by -12dB, in milliseconds
     pub fn set_decay(self: &mut Self, decay: f32) {
         self.decay = decay;
         self.update();
     }
 
+    /// Sets the sample rate of the incoming audio.
+    ///
+    /// This function **clears** the buffer. You can call it inside your
+    /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function and provide the
+    /// sample rate like so:
+    ///
+    /// ```
+    /// fn initialize(
+    ///     &mut self,
+    ///     _audio_io_layout: &AudioIOLayout,
+    ///     buffer_config: &BufferConfig,
+    ///     _context: &mut impl InitContext<Self>,
+    /// ) -> bool {
+    ///     match self.peak_buffer.lock() {
+    ///         Ok(mut buffer) => {
+    ///             buffer.set_sample_rate(buffer_config.sample_rate);
+    ///         }
+    ///         Err(_) => return false,
+    ///     }
+    ///
+    ///     true
+    /// }
+    /// ```
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.update();
         self.buffer.clear();
     }
 
+    /// Sets the duration (in seconds) of the audio data inside the buffer.
+    ///
+    /// This function **clears** the buffer.
     pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
         self.update();

@@ -30,7 +30,7 @@ Here's a demo:
 
 https://github.com/223230/cyma/assets/68156346/a40286ca-22e3-424d-93b6-56ff1a29ebdc
 
-Read the <a href="https://223230.github.io/cyma/">docs</a> (incomplete)
+Read the <a href="https://223230.github.io/cyma/">docs</a>
 
 ## 🧰 What's included
 

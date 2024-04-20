@@ -8,7 +8,24 @@ use nih_plug_vizia::vizia::{
 };
 use std::sync::{Arc, Mutex};
 
-/// A real-time graph displaying information that is stored inside a buffer
+/// Real-time graph displaying information that is stored inside a buffer
+///
+/// Use this view to construct peak graphs, loudness graphs, or any other graph that
+/// displays the data inside a [`VisualizerBuffer`].
+///
+/// # Example
+///
+/// Here's how to set up a basic peak graph. For this example, you'll need a
+/// [`PeakBuffer`](crate::utils::PeakBuffer) to store your peak information.
+///
+/// ```
+/// Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
+///     .color(Color::rgba(0, 0, 0, 160))
+///     .background_color(Color::rgba(0, 0, 0, 60));
+/// ```
+///
+/// The graph displays the range from -32.0dB to 8dB. It scales the values as
+/// decibels, and a stroke and fill (background) color is provided.
 pub struct Graph<L, I>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
@@ -108,9 +125,22 @@ where
 }
 
 pub trait GraphModifiers {
-    /// Allows for the grid to be filled from the top instead of the bottom.
+    /// Allows for the graph to be filled from the top instead of the bottom.
     ///
     /// This is useful for certain graphs like gain reduction meters.
+    ///
+    /// # Example
+    ///
+    /// Here's a gain reduction graph, which you could overlay on top of a peak graph.
+    ///
+    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
+    ///
+    /// ```
+    /// Graph::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels)
+    ///     .should_fill_from_top(true)
+    ///     .color(Color::rgba(255, 0, 0, 160))
+    ///     .background_color(Color::rgba(255, 0, 0, 60));
+    /// ```
     fn should_fill_from_top(self, fill_from_top: bool) -> Self;
 }
 
