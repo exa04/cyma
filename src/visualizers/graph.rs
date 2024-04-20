@@ -1,5 +1,6 @@
 use crate::utils::{ValueScaling, VisualizerBuffer};
 
+use nih_plug_vizia::vizia::style::Length::Value;
 use nih_plug_vizia::vizia::{
     binding::{Lens, LensExt, Res},
     context::{Context, DrawContext},
@@ -34,7 +35,7 @@ where
     buffer: L,
     display_range: (f32, f32),
     scaling: ValueScaling,
-    fill_from_top: bool,
+    fill_from: f32,
 }
 
 impl<L, I> Graph<L, I>
@@ -48,11 +49,12 @@ where
         display_range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
     ) -> Handle<Self> {
+        let range = display_range.get_val(cx);
         Self {
             buffer,
-            display_range: display_range.get_val(cx),
+            display_range: range,
             scaling: scaling.get_val(cx),
-            fill_from_top: false,
+            fill_from: range.0,
         }
         .build(cx, |_| {})
     }
@@ -104,16 +106,16 @@ where
         }
 
         let mut fill = stroke.clone();
+        let fill_from_n = 1.0
+            - ValueScaling::Linear.value_to_normalized(
+                self.fill_from,
+                self.display_range.0,
+                self.display_range.1,
+            );
 
-        if self.fill_from_top {
-            fill.line_to(x + w, y);
-            fill.line_to(x, y);
-            fill.close();
-        } else {
-            fill.line_to(x + w, y + h);
-            fill.line_to(x, y + h);
-            fill.close();
-        }
+        fill.line_to(x + w, y + h * fill_from_n);
+        fill.line_to(x, y + h * fill_from_n);
+        fill.close();
 
         canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
 
@@ -142,6 +144,24 @@ pub trait GraphModifiers {
     ///     .background_color(Color::rgba(255, 0, 0, 60));
     /// ```
     fn should_fill_from_top(self, fill_from_top: bool) -> Self;
+
+    /// Allows for the graph to be filled from any desired level.
+    ///
+    /// This is useful for certain graphs like gain reduction meters.
+    ///
+    /// # Example
+    ///
+    /// Here's a gain reduction graph, which you could overlay on top of a peak graph.
+    ///
+    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
+    ///
+    /// ```
+    /// Graph::new(cx, Data::gain_mult, (-32.0, 6.0), ValueScaling::Decibels)
+    ///     .fill_from(1.0)
+    ///     .color(Color::rgba(255, 0, 0, 160))
+    ///     .background_color(Color::rgba(255, 0, 0, 60));
+    /// ```
+    fn fill_from(self, level: f32) -> Self;
 }
 
 impl<'a, L, I> GraphModifiers for Handle<'a, Graph<L, I>>
@@ -151,7 +171,16 @@ where
 {
     fn should_fill_from_top(self, fill_from_top: bool) -> Self {
         self.modify(|graph| {
-            graph.fill_from_top = fill_from_top;
+            graph.fill_from = if fill_from_top {
+                graph.display_range.1
+            } else {
+                graph.display_range.0
+            };
+        })
+    }
+    fn fill_from(self, level: f32) -> Self {
+        self.modify(|graph| {
+            graph.fill_from = level;
         })
     }
 }
