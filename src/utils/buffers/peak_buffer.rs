@@ -14,11 +14,17 @@ pub struct PeakBuffer {
     duration: f32,
     // The current time, counts down from sample_delta to 0
     t: f32,
+    /// The decay time for the peak amplitude to halve.
+    decay: f32,
+    // This is set `set_sample_rate()` based on the sample_delta
+    decay_weight: f32,
 }
 
 impl PeakBuffer {
     pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
         let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
+    pub fn new(size: usize, duration: f32, decay: f32) -> Self {
+        let decay_weight = Self::decay_weight(decay, size, duration);
         Self {
             buffer: RingBuffer::<f32>::new(size),
             max_acc: 0.,
@@ -26,7 +32,13 @@ impl PeakBuffer {
             sample_rate,
             duration,
             t: sample_delta,
+            decay,
+            decay_weight,
         }
+    }
+
+    pub fn set_decay(self: &mut Self, decay: f32) {
+        self.decay = decay;
     }
 
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
@@ -44,6 +56,10 @@ impl PeakBuffer {
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
         (sample_rate * duration) / size as f32
     }
+
+    fn decay_weight(decay: f32, size: usize, duration: f32) -> f32 {
+        0.25f64.powf((decay as f64 / 1000. * (size as f64 / duration as f64)).recip()) as f32
+    }
 }
 
 impl VisualizerBuffer<f32> for PeakBuffer {
@@ -52,6 +68,17 @@ impl VisualizerBuffer<f32> for PeakBuffer {
         self.t -= 1.0;
         if self.t < 0.0 {
             self.buffer.enqueue(self.max_acc);
+            let last_peak = self.buffer.peek();
+            let mut peak = self.max_acc;
+
+            // If the current peak is greater than the last one, we immediately enqueue it. If it's less than
+            // the last one, we weigh the previous into the current one, analogous to how peak meters work.
+            self.buffer.enqueue(if peak >= last_peak {
+                peak
+            } else {
+                (last_peak * self.decay_weight) + (peak * (1.0 - self.decay_weight))
+            });
+
             self.t += self.sample_delta;
             self.max_acc = 0.;
         }
