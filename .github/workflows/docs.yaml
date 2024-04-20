@@ -36,31 +36,16 @@ jobs:
         run: echo '<meta http-equiv="refresh" content="0;url=cyma/">' > target/doc/index.html
       - name: Remove lock file
         run: rm target/doc/.lock
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: target/doc
-  book:
-    name: Build book
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Configure cache
-        uses: Swatinem/rust-cache@v2
-      - name: Setup pages
-        id: pages
-        uses: actions/configure-pages@v4
       - name: Install mdbook
         run: cargo install mdbook
       - name: Build book
         run: mdbook build ./book
+      - name: Move book
+        run: mv ./book/book target/doc/book
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: book/book
+          path: target/doc
   deploy:
     name: Deploy
     environment:
