@@ -41,16 +41,15 @@ impl WaveformBuffer {
     /// The buffer needs to be provided a sample rate after initialization - do this by
     /// calling [`set_sample_rate`](Self::set_sample_rate) inside your
     /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function.
-    pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
-        let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
+    pub fn new(size: usize, duration: f32) -> Self {
         Self {
             buffer: RingBuffer::<(f32, f32)>::new(size),
             min_acc: f32::MAX,
             max_acc: f32::MIN,
-            sample_delta,
-            sample_rate,
+            sample_delta: 0.,
+            sample_rate: 0.,
             duration,
-            t: sample_delta,
+            t: 0.,
         }
     }
 
