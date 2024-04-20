@@ -1,17 +1,22 @@
 <div align="center">
   <img src="doc/logo.svg">
   <h1>Cyma</h1>
-</div>
-<div align="center">
+  
+  [Documentation] | [Book] | [Examples] | [Contributing]
+  
+  Composable views and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
+  
+  
   <a href="https://github.com/223230/cyma/actions/workflows/test.yml"><img src="https://github.com/223230/cyma/actions/workflows/test.yml/badge.svg"></a>
   <a href="https://github.com/223230/cyma/actions/workflows/docs.yml"><img src="https://github.com/223230/cyma/actions/workflows/docs.yaml/badge.svg"></a>
   <a href="https://deps.rs/repo/github/223230/cyma"><img src="https://deps.rs/repo/github/223230/cyma/status.svg"></a>
   <a href="https://github.com/223230/cyma/milestone/1"><img src="https://img.shields.io/github/milestones/progress-percent/223230/cyma/1"></a>
 </div>
-<br/>
-<div align="center">
-  Composable views and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
-</div>
+
+[Documentation]: https://223230.github.io/cyma
+[Book]: https://223230.github.io/cyma/book
+[Examples]: ./examples/
+[Contributing]: CONTRIBUTING.md
 
 ---
 
