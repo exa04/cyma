@@ -7,4 +7,5 @@ works on top of [VIZIA](https://github.com/vizia/vizia) as a "view library" for
 your [nih-plug](https://github.com/robbert-vdh/nih-plug) UIs.
 
 In this book, you'll learn how you can compose some common visualizers - and you
-will also learn the basics of how Cyma works along the way.
+will also learn the basics of how Cyma works along the way. It's still a work in
+progress, so expect it to grow and include more extensive examples over time.
