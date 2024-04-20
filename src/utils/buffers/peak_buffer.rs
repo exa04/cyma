@@ -2,6 +2,15 @@ use std::ops::{Index, IndexMut};
 
 use super::{RingBuffer, VisualizerBuffer};
 
+/// Stores peak information.
+///
+/// This buffer stores the absolute maxima of a signal - i.e. the peaks - over time.
+/// It can apply a decay to them, making it useful for peak visualizers such as peak
+/// graphs and meters.
+///
+/// The `PeakBuffer` needs to be provided a sample rate after initialization - do
+/// this inside your [`initialize()`](nih_plug::plugin::Plugin::initialize)
+/// function.
 #[derive(Clone, Default)]
 pub struct PeakBuffer {
     buffer: RingBuffer<f32>,
@@ -14,35 +23,94 @@ pub struct PeakBuffer {
     duration: f32,
     // The current time, counts down from sample_delta to 0
     t: f32,
+    /// The decay time for the peak amplitude to halve.
+    decay: f32,
+    // This is set `set_sample_rate()` based on the sample_delta
+    decay_weight: f32,
 }
 
 impl PeakBuffer {
-    pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
-        let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
+    /// Constructs a new `PeakBuffer`.
+    ///
+    /// * `size` - The length of the buffer in samples; Usually, this can be kept < 2000
+    /// * `duration` - The duration (in seconds) of the audio data inside the buffer
+    /// * `decay` - The time it takes for a sample inside the buffer to decrease by -12dB, in milliseconds
+    ///
+    /// The buffer needs to be provided a sample rate after initialization - do this by
+    /// calling [`set_sample_rate`](Self::set_sample_rate) inside your
+    /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function.
+    pub fn new(size: usize, duration: f32, decay: f32) -> Self {
+        let decay_weight = Self::decay_weight(decay, size, duration);
         Self {
             buffer: RingBuffer::<f32>::new(size),
             max_acc: 0.,
-            sample_delta,
-            sample_rate,
+            sample_delta: 0.,
+            sample_rate: 0.,
             duration,
-            t: sample_delta,
+            t: 0.,
+            decay,
+            decay_weight,
         }
     }
 
+    /// Sets the decay time of the `PeakBuffer`.
+    ///
+    /// * `decay` - The time it takes for a sample inside the buffer to decrease by -12dB, in milliseconds
+    pub fn set_decay(self: &mut Self, decay: f32) {
+        self.decay = decay;
+        self.update();
+    }
+
+    /// Sets the sample rate of the incoming audio.
+    ///
+    /// This function **clears** the buffer. You can call it inside your
+    /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function and provide the
+    /// sample rate like so:
+    ///
+    /// ```
+    /// fn initialize(
+    ///     &mut self,
+    ///     _audio_io_layout: &AudioIOLayout,
+    ///     buffer_config: &BufferConfig,
+    ///     _context: &mut impl InitContext<Self>,
+    /// ) -> bool {
+    ///     match self.peak_buffer.lock() {
+    ///         Ok(mut buffer) => {
+    ///             buffer.set_sample_rate(buffer_config.sample_rate);
+    ///         }
+    ///         Err(_) => return false,
+    ///     }
+    ///
+    ///     true
+    /// }
+    /// ```
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 
+    /// Sets the duration (in seconds) of the audio data inside the buffer.
+    ///
+    /// This function **clears** the buffer.
     pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, duration);
+        self.update();
         self.buffer.clear();
     }
 
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
-        (sample_rate * duration) / size as f32
+        ((sample_rate as f64 * duration as f64) / size as f64) as f32
+    }
+
+    fn decay_weight(decay: f32, size: usize, duration: f32) -> f32 {
+        0.25f64.powf((decay as f64 / 1000. * (size as f64 / duration as f64)).recip()) as f32
+    }
+
+    fn update(self: &mut Self) {
+        self.decay_weight = Self::decay_weight(self.decay, self.buffer.len(), self.duration);
+        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, self.duration);
+        self.t = self.sample_delta;
     }
 }
 
@@ -51,7 +119,17 @@ impl VisualizerBuffer<f32> for PeakBuffer {
         let value = value.abs();
         self.t -= 1.0;
         if self.t < 0.0 {
-            self.buffer.enqueue(self.max_acc);
+            let last_peak = self.buffer.peek();
+            let mut peak = self.max_acc;
+
+            // If the current peak is greater than the last one, we immediately enqueue it. If it's less than
+            // the last one, we weigh the previous into the current one, analogous to how peak meters work.
+            self.buffer.enqueue(if peak >= last_peak {
+                peak
+            } else {
+                (last_peak * self.decay_weight) + (peak * (1.0 - self.decay_weight))
+            });
+
             self.t += self.sample_delta;
             self.max_acc = 0.;
         }
@@ -95,7 +173,7 @@ impl VisualizerBuffer<f32> for PeakBuffer {
             return;
         };
         self.buffer.grow(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 
@@ -105,7 +183,7 @@ impl VisualizerBuffer<f32> for PeakBuffer {
             return;
         };
         self.buffer.shrink(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 }
@@ -120,24 +198,5 @@ impl Index<usize> for PeakBuffer {
 impl IndexMut<usize> for PeakBuffer {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         self.buffer.index_mut(index)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::utils::VisualizerBuffer;
-
-    use super::PeakBuffer;
-
-    #[test]
-    fn enqueue() {
-        let mut rb = PeakBuffer::new(16, 4.0, 8.0);
-
-        rb.enqueue(2.);
-        rb.enqueue(9.);
-        rb.enqueue(19.);
-        rb.enqueue(-10.);
-        rb.enqueue(4.);
-        rb.enqueue(6.);
     }
 }

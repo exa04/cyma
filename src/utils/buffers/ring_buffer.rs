@@ -8,9 +8,6 @@ use std::ops::{Index, IndexMut};
 /// oldest element is popped off the head of the buffer. Due to its fixed-size
 /// nature, the ring buffer is very fast and doesn't dynamically reallocate
 /// itself, or move any elements around when an element is added.
-///
-/// It is foundational to visualizers, certain audio effects, and many other
-/// real-time applications where elements need to be sequentally enqueued.
 #[derive(Clone, PartialEq, Eq, Default, Hash, Debug)]
 pub struct RingBuffer<T> {
     head: usize,
@@ -94,6 +91,10 @@ impl<T: Default + Copy> RingBuffer<T> {
     pub fn enqueue(self: &mut Self, value: T) {
         self.data[self.head] = value;
         self.head = (self.head + 1) % self.size;
+    }
+
+    pub fn peek(self: &Self) -> T {
+        self.data[(self.size + self.head - 1) % self.size]
     }
 
     /// Clears the entire buffer, filling it with default values (usually 0)
@@ -270,5 +271,21 @@ mod tests {
         rb.enqueue(3);
 
         rb[4];
+    }
+
+    #[test]
+    fn peek() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        rb.enqueue(1);
+        assert_eq!(rb.peek(), 1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+        assert_eq!(rb.peek(), 3);
+        rb.enqueue(4);
+        rb.enqueue(5);
+        rb.enqueue(6);
+        rb.enqueue(7);
+        assert_eq!(rb.peek(), 7);
     }
 }

@@ -19,6 +19,65 @@ lazy_static! {
     static ref TRANSLATE_COS: f32 = (PI / 4.).cos();
 }
 
+/// Lissajous for stereo audio data.
+///
+/// The further points are from the horizontal middle, the more stereo your signal
+/// is. If they are closer to the top or bottom, your signal has a positive or a
+/// negative offset, respectively. If the lissajous shows a straight horizontal
+/// line, your channels are fully out of phase. If it skews either way diagonally,
+/// your signal is more present on the left or right side, respectively.
+///
+/// For more information about lissajous curves, check out the
+/// [Wikipedia entry](https://en.wikipedia.org/wiki/Lissajous_curve) on them.
+///
+/// # Examples
+///
+/// ## Basic Lissajous
+///
+/// For this example, set up a [`RingBuffer<(f32, f32)>`](crate::utils::RingBuffer)
+/// that contains your stereo data as tuples of `f32`s.
+///
+/// ```
+/// Lissajous::new(cx, Data::lissajous_buffer).color(Color::rgb(160, 160, 160));
+/// ```
+///
+/// ## Grid and Labels
+///
+/// If you want to take it a step further, you can add a [`LissajousGrid`] and
+/// labels to your Lissajous.
+///
+/// ```
+/// ZStack::new(cx, |cx| {
+///     LissajousGrid::new(cx)
+///         .background_color(Color::rgb(32, 32, 32))
+///         .color(Color::rgb(60, 60, 60));
+///     Lissajous::new(cx, Data::lissajous_buffer).color(Color::rgb(160, 160, 160));
+///     ZStack::new(cx, |cx| {
+///         Label::new(cx, "+L").color(Color::rgb(160, 160, 160));
+///         Label::new(cx, "+R")
+///             .left(Percentage(100.))
+///             .transform(Transform::TranslateX(LengthOrPercentage::Percentage(-100.)))
+///             .color(Color::rgb(160, 160, 160));
+///         Label::new(cx, "-R")
+///             .top(Percentage(100.))
+///             .transform(Transform::TranslateY(LengthOrPercentage::Percentage(-100.)))
+///             .color(Color::rgb(160, 160, 160));
+///         Label::new(cx, "-L")
+///             .top(Percentage(100.))
+///             .left(Percentage(100.))
+///             .transform(vec![
+///                 Transform::TranslateX(LengthOrPercentage::Percentage(-100.)),
+///                 Transform::TranslateY(LengthOrPercentage::Percentage(-100.)),
+///             ])
+///             .color(Color::rgb(160, 160, 160));
+///     })
+///     .space(Pixels(16.));
+/// })
+/// .background_color(Color::rgb(16, 16, 16))
+/// .border_color(Color::rgb(80, 80, 80))
+/// .border_width(Pixels(1.))
+/// .width(Pixels(200.));
+/// ```
 pub struct Lissajous<L>
 where
     L: Lens<Target = Arc<Mutex<RingBuffer<(f32, f32)>>>>,
@@ -79,6 +138,7 @@ where
     }
 }
 
+/// A diamond-shaped grid that can serve as a backdrop for a [`Lissajous`]
 pub struct LissajousGrid {}
 
 impl LissajousGrid {

@@ -36,6 +36,12 @@ jobs:
         run: echo '<meta http-equiv="refresh" content="0;url=cyma/">' > target/doc/index.html
       - name: Remove lock file
         run: rm target/doc/.lock
+      - name: Install mdbook
+        run: cargo install mdbook
+      - name: Build book
+        run: mdbook build ./book
+      - name: Move book
+        run: mv ./book/book target/doc/book
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

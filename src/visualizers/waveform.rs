@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-/// A static waveform display.
+/// Static waveform.
 ///
 /// For displaying frequently updating waveform data, use an [`Oscilloscope`]
 /// instead.
