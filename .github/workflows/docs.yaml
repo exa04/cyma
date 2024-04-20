@@ -40,6 +40,27 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: target/doc
+  book:
+    name: Build book
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Configure cache
+        uses: Swatinem/rust-cache@v2
+      - name: Setup pages
+        id: pages
+        uses: actions/configure-pages@v4
+      - name: Install mdbook
+        run: cargo install mdbook
+      - name: Build book
+        run: mdbook build ./book
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: book/book
   deploy:
     name: Deploy
     environment:
