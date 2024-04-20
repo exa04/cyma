@@ -19,7 +19,7 @@ use super::{RingBuffer, VisualizerBuffer};
 pub struct MinimaBuffer {
     buffer: RingBuffer<f32>,
     // Minimum and maximum accumulators
-    max_acc: f32,
+    min_acc: f32,
     // The gap between elements of the buffer in samples
     sample_delta: f32,
     // Used to calculate the sample_delta
@@ -47,7 +47,7 @@ impl MinimaBuffer {
         let decay_weight = Self::decay_weight(decay, size, duration);
         Self {
             buffer: RingBuffer::<f32>::new(size),
-            max_acc: 0.,
+            min_acc: f32::MAX,
             sample_delta: 0.,
             sample_rate: 0.,
             duration,
@@ -124,7 +124,7 @@ impl VisualizerBuffer<f32> for MinimaBuffer {
         self.t -= 1.0;
         if self.t < 0.0 {
             let last_peak = self.buffer.peek();
-            let mut peak = self.max_acc;
+            let mut peak = self.min_acc;
 
             // If the current peak is less than the last one, we immediately enqueue it. If it's greater than
             // the last one, we weigh the previous into the current one, analogous to how peak meters work.
@@ -135,10 +135,10 @@ impl VisualizerBuffer<f32> for MinimaBuffer {
             });
 
             self.t += self.sample_delta;
-            self.max_acc = 0.;
+            self.min_acc = f32::MAX;
         }
-        if value < self.max_acc {
-            self.max_acc = value
+        if value < self.min_acc {
+            self.min_acc = value
         }
     }
 
