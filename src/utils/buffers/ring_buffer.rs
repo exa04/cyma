@@ -96,6 +96,10 @@ impl<T: Default + Copy> RingBuffer<T> {
         self.head = (self.head + 1) % self.size;
     }
 
+    pub fn peek(self: &Self) -> T {
+        self.data[(self.size + self.head - 1) % self.size]
+    }
+
     /// Clears the entire buffer, filling it with default values (usually 0)
     pub fn clear(self: &mut Self) {
         self.data.iter_mut().for_each(|x| *x = T::default());
@@ -270,5 +274,21 @@ mod tests {
         rb.enqueue(3);
 
         rb[4];
+    }
+
+    #[test]
+    fn peek() {
+        let mut rb = RingBuffer::<i32>::new(4);
+
+        rb.enqueue(1);
+        assert_eq!(rb.peek(), 1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+        assert_eq!(rb.peek(), 3);
+        rb.enqueue(4);
+        rb.enqueue(5);
+        rb.enqueue(6);
+        rb.enqueue(7);
+        assert_eq!(rb.peek(), 7);
     }
 }

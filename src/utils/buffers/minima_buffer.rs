@@ -11,40 +11,65 @@ use super::{RingBuffer, VisualizerBuffer};
 #[derive(Clone, Default)]
 pub struct MinimaBuffer {
     buffer: RingBuffer<f32>,
-    min_acc: f32,
+    // Minimum and maximum accumulators
+    max_acc: f32,
+    // The gap between elements of the buffer in samples
     sample_delta: f32,
+    // Used to calculate the sample_delta
     sample_rate: f32,
     duration: f32,
+    // The current time, counts down from sample_delta to 0
     t: f32,
+    /// The decay time for the peak amplitude to halve.
+    decay: f32,
+    // This is set `set_sample_rate()` based on the sample_delta
+    decay_weight: f32,
 }
 
 impl MinimaBuffer {
-    pub fn new(size: usize, sample_rate: f32, duration: f32) -> Self {
-        let sample_delta = Self::sample_delta(size, sample_rate as f32, duration as f32);
+    pub fn new(size: usize, duration: f32, decay: f32) -> Self {
+        let decay_weight = Self::decay_weight(decay, size, duration);
         Self {
             buffer: RingBuffer::<f32>::new(size),
-            min_acc: f32::MAX,
-            sample_delta,
-            sample_rate,
+            max_acc: 0.,
+            sample_delta: 0.,
+            sample_rate: 0.,
             duration,
-            t: sample_delta,
+            t: 0.,
+            decay,
+            decay_weight,
         }
+    }
+
+    pub fn set_decay(self: &mut Self, decay: f32) {
+        self.decay = decay;
+        self.update();
     }
 
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 
     pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, duration);
+        self.update();
         self.buffer.clear();
     }
 
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
-        (sample_rate * duration) / size as f32
+        ((sample_rate as f64 * duration as f64) / size as f64) as f32
+    }
+
+    fn decay_weight(decay: f32, size: usize, duration: f32) -> f32 {
+        0.25f64.powf((decay as f64 / 1000. * (size as f64 / duration as f64)).recip()) as f32
+    }
+
+    fn update(self: &mut Self) {
+        self.decay_weight = Self::decay_weight(self.decay, self.buffer.len(), self.duration);
+        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, self.duration);
+        self.t = self.sample_delta;
     }
 }
 
@@ -53,12 +78,22 @@ impl VisualizerBuffer<f32> for MinimaBuffer {
         let value = value.abs();
         self.t -= 1.0;
         if self.t < 0.0 {
-            self.buffer.enqueue(self.min_acc);
+            let last_peak = self.buffer.peek();
+            let mut peak = self.max_acc;
+
+            // If the current peak is less than the last one, we immediately enqueue it. If it's greater than
+            // the last one, we weigh the previous into the current one, analogous to how peak meters work.
+            self.buffer.enqueue(if peak <= last_peak {
+                peak
+            } else {
+                (last_peak * self.decay_weight) + (peak * (1.0 - self.decay_weight))
+            });
+
             self.t += self.sample_delta;
-            self.min_acc = f32::MAX;
+            self.max_acc = 0.;
         }
-        if value < self.min_acc {
-            self.min_acc = value
+        if value < self.max_acc {
+            self.max_acc = value
         }
     }
 
@@ -97,7 +132,7 @@ impl VisualizerBuffer<f32> for MinimaBuffer {
             return;
         };
         self.buffer.grow(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 
@@ -107,7 +142,7 @@ impl VisualizerBuffer<f32> for MinimaBuffer {
             return;
         };
         self.buffer.shrink(size);
-        self.sample_delta = Self::sample_delta(size, self.sample_rate, self.duration);
+        self.update();
         self.buffer.clear();
     }
 }

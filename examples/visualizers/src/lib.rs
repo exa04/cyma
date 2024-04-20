@@ -36,7 +36,7 @@ impl Default for VisualizersDemo {
         Self {
             params: Arc::new(DemoParams::default()),
             oscilloscope_buffer: Arc::new(Mutex::new(WaveformBuffer::new(800, 44100.0, 5.0))),
-            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 44100.0, 10.0))),
+            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 10.0, 50.))),
             lissajous_buffer: Arc::new(Mutex::new(RingBuffer::new(2048))),
 
             spectrum_input,
