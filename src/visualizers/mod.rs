@@ -17,3 +17,9 @@ pub use oscilloscope::*;
 pub use spectrum_analyzer::*;
 pub use unit_ruler::*;
 pub use waveform::*;
+
+use nih_plug_vizia::vizia::binding::Res;
+
+pub trait RangeModifiers {
+    fn range(self, range: impl Res<(f32, f32)>) -> Self;
+}
