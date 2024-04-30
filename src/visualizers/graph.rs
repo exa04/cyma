@@ -1,12 +1,7 @@
+use super::RangeModifiers;
 use crate::utils::{ValueScaling, VisualizerBuffer};
 
-use nih_plug_vizia::vizia::style::Length::Value;
-use nih_plug_vizia::vizia::{
-    binding::{Lens, LensExt, Res},
-    context::{Context, DrawContext},
-    vg,
-    view::{Canvas, Handle, View},
-};
+use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
 
 /// Real-time graph displaying information that is stored inside a buffer
@@ -33,9 +28,13 @@ where
     I: VisualizerBuffer<f32> + 'static,
 {
     buffer: L,
-    display_range: (f32, f32),
+    range: (f32, f32),
     scaling: ValueScaling,
     fill_from: f32,
+}
+
+enum GraphEvents {
+    UpdateRange((f32, f32)),
 }
 
 impl<L, I> Graph<L, I>
@@ -46,17 +45,18 @@ where
     pub fn new(
         cx: &mut Context,
         buffer: L,
-        display_range: impl Res<(f32, f32)>,
-        scaling: impl Res<ValueScaling>,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
     ) -> Handle<Self> {
-        let range = display_range.get_val(cx);
+        let r = range.get_val(cx);
         Self {
             buffer,
-            display_range: range,
+            range: r,
             scaling: scaling.get_val(cx),
-            fill_from: range.0,
+            fill_from: r.0,
         }
         .build(cx, |_| {})
+        .range(range)
     }
 }
 
@@ -82,21 +82,17 @@ where
         let binding = self.buffer.get(cx);
         let ring_buf = &(binding.lock().unwrap());
 
-        let mut peak = self.scaling.value_to_normalized(
-            ring_buf[0],
-            self.display_range.0,
-            self.display_range.1,
-        );
+        let mut peak = self
+            .scaling
+            .value_to_normalized(ring_buf[0], self.range.0, self.range.1);
 
         stroke.move_to(x, y + h * (1. - peak));
 
         for i in 1..ring_buf.len() {
             // Normalize peak value
-            peak = self.scaling.value_to_normalized(
-                ring_buf[i],
-                self.display_range.0,
-                self.display_range.1,
-            );
+            peak = self
+                .scaling
+                .value_to_normalized(ring_buf[i], self.range.0, self.range.1);
 
             // Draw peak as a new point
             stroke.line_to(
@@ -107,11 +103,7 @@ where
 
         let mut fill = stroke.clone();
         let fill_from_n = 1.0
-            - ValueScaling::Linear.value_to_normalized(
-                self.fill_from,
-                self.display_range.0,
-                self.display_range.1,
-            );
+            - ValueScaling::Linear.value_to_normalized(self.fill_from, self.range.0, self.range.1);
 
         fill.line_to(x + w, y + h * fill_from_n);
         fill.line_to(x, y + h * fill_from_n);
@@ -123,6 +115,15 @@ where
             &stroke,
             &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
         );
+    }
+    fn event(
+        &mut self,
+        _cx: &mut nih_plug_vizia::vizia::context::EventContext,
+        event: &mut nih_plug_vizia::vizia::events::Event,
+    ) {
+        event.map(|e, _| match e {
+            GraphEvents::UpdateRange(v) => self.range = *v,
+        });
     }
 }
 
@@ -172,9 +173,9 @@ where
     fn should_fill_from_top(self, fill_from_top: bool) -> Self {
         self.modify(|graph| {
             graph.fill_from = if fill_from_top {
-                graph.display_range.1
+                graph.range.1
             } else {
-                graph.display_range.0
+                graph.range.0
             };
         })
     }
@@ -182,5 +183,21 @@ where
         self.modify(|graph| {
             graph.fill_from = level;
         })
+    }
+}
+
+impl<'a, L, I> RangeModifiers for Handle<'a, Graph<L, I>>
+where
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
+{
+    fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
+        let e = self.entity();
+
+        range.set_or_bind(self.context(), e, move |cx, r| {
+            (*cx).emit_to(e, GraphEvents::UpdateRange(r.clone()));
+        });
+
+        self
     }
 }

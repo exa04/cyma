@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
+use super::RangeModifiers;
 use crate::utils::ValueScaling;
 use crate::utils::VisualizerBuffer;
 
@@ -29,7 +30,7 @@ where
     I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
     buffer: L,
-    display_range: (f32, f32),
+    range: (f32, f32),
     scaling: ValueScaling,
     orientation: Orientation,
 }
@@ -42,18 +43,23 @@ where
     pub fn new(
         cx: &mut Context,
         buffer: L,
-        display_range: impl Res<(f32, f32)>,
+        range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
         orientation: Orientation,
     ) -> Handle<Self> {
         Self {
             buffer,
-            display_range: display_range.get_val(cx),
+            range: range.get_val(cx),
             scaling: scaling.get_val(cx),
             orientation,
         }
         .build(cx, |_| {})
+        .range(range)
     }
+}
+
+enum MeterEvents {
+    UpdateRange((f32, f32)),
 }
 
 impl<L, I> View for Meter<L, I>
@@ -77,8 +83,8 @@ where
 
         let level = self.scaling.value_to_normalized(
             ring_buf[ring_buf.len() - 1],
-            self.display_range.0,
-            self.display_range.1,
+            self.range.0,
+            self.range.1,
         );
 
         let mut path = vg::Path::new();
@@ -112,5 +118,26 @@ where
                 canvas.fill_path(&path, &vg::Paint::color(cx.background_color().into()));
             }
         };
+    }
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|e, _| match e {
+            MeterEvents::UpdateRange(v) => self.range = *v,
+        });
+    }
+}
+
+impl<'a, L, I> RangeModifiers for Handle<'a, Meter<L, I>>
+where
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
+{
+    fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
+        let e = self.entity();
+
+        range.set_or_bind(self.context(), e, move |cx, r| {
+            (*cx).emit_to(e, MeterEvents::UpdateRange(r.clone()));
+        });
+
+        self
     }
 }
