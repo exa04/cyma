@@ -57,11 +57,13 @@ where
         }
         .build(cx, |_| {})
         .range(range)
+        .scaling(scaling)
     }
 }
 
 enum MeterEvents {
     UpdateRange((f32, f32)),
+    UpdateScaling(ValueScaling),
 }
 
 impl<L, I> View for Meter<L, I>
@@ -144,6 +146,7 @@ where
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|e, _| match e {
             MeterEvents::UpdateRange(v) => self.range = *v,
+            MeterEvents::UpdateScaling(v) => self.scaling = *v,
         });
     }
 }
@@ -207,6 +210,15 @@ where
 
         range.set_or_bind(self.context(), e, move |cx, r| {
             (*cx).emit_to(e, MeterEvents::UpdateRange(r));
+        });
+
+        self
+    }
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        let e = self.entity();
+
+        scaling.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, MeterEvents::UpdateScaling(s));
         });
 
         self

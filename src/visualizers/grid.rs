@@ -41,6 +41,7 @@ pub struct Grid {
 
 enum GridEvents {
     UpdateRange((f32, f32)),
+    UpdateScaling(ValueScaling),
 }
 
 impl Grid {
@@ -59,6 +60,7 @@ impl Grid {
         }
         .build(cx, |_| {})
         .range(range)
+        .scaling(scaling)
     }
 }
 
@@ -116,13 +118,10 @@ impl View for Grid {
             &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
         );
     }
-    fn event(
-        &mut self,
-        _cx: &mut nih_plug_vizia::vizia::context::EventContext,
-        event: &mut nih_plug_vizia::vizia::events::Event,
-    ) {
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|e, _| match e {
             GridEvents::UpdateRange(v) => self.range = *v,
+            GridEvents::UpdateScaling(v) => self.scaling = *v,
         });
     }
 }
@@ -133,6 +132,15 @@ impl<'a> RangeModifiers for Handle<'a, Grid> {
 
         range.set_or_bind(self.context(), e, move |cx, r| {
             (*cx).emit_to(e, GridEvents::UpdateRange(r.clone()));
+        });
+
+        self
+    }
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        let e = self.entity();
+
+        scaling.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, GridEvents::UpdateScaling(s));
         });
 
         self

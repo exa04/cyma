@@ -36,6 +36,7 @@ where
 
 enum OscilloscopeEvents {
     UpdateRange((f32, f32)),
+    UpdateScaling(ValueScaling),
 }
 
 impl<B> Oscilloscope<B>
@@ -61,6 +62,7 @@ where
         }
         .build(cx, |_| {})
         .range(range)
+        .scaling(scaling)
     }
 }
 
@@ -130,6 +132,7 @@ where
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|e, _| match e {
             OscilloscopeEvents::UpdateRange(v) => self.range = *v,
+            OscilloscopeEvents::UpdateScaling(v) => self.scaling = *v,
         });
     }
 }
@@ -142,7 +145,16 @@ where
         let e = self.entity();
 
         range.set_or_bind(self.context(), e, move |cx, r| {
-            (*cx).emit_to(e, OscilloscopeEvents::UpdateRange(r.clone()));
+            (*cx).emit_to(e, OscilloscopeEvents::UpdateRange(r));
+        });
+
+        self
+    }
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        let e = self.entity();
+
+        scaling.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, OscilloscopeEvents::UpdateScaling(s));
         });
 
         self

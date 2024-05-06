@@ -35,6 +35,7 @@ where
 
 enum GraphEvents {
     UpdateRange((f32, f32)),
+    UpdateScaling(ValueScaling),
 }
 
 impl<L, I> Graph<L, I>
@@ -48,15 +49,15 @@ where
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
     ) -> Handle<Self> {
-        let r = range.get_val(cx);
         Self {
             buffer,
-            range: r,
+            range: range.get_val(cx),
             scaling: scaling.get_val(cx),
             fill_from: FillFrom::Bottom,
         }
         .build(cx, |_| {})
         .range(range)
+        .scaling(scaling)
     }
 }
 
@@ -67,6 +68,12 @@ where
 {
     fn element(&self) -> Option<&'static str> {
         Some("graph")
+    }
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|e, _| match e {
+            GraphEvents::UpdateRange(v) => self.range = *v,
+            GraphEvents::UpdateScaling(s) => self.scaling = *s,
+        });
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();
@@ -120,15 +127,6 @@ where
             &stroke,
             &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
         );
-    }
-    fn event(
-        &mut self,
-        _cx: &mut nih_plug_vizia::vizia::context::EventContext,
-        event: &mut nih_plug_vizia::vizia::events::Event,
-    ) {
-        event.map(|e, _| match e {
-            GraphEvents::UpdateRange(v) => self.range = *v,
-        });
     }
 }
 
@@ -191,6 +189,15 @@ where
 
         range.set_or_bind(self.context(), e, move |cx, r| {
             (*cx).emit_to(e, GraphEvents::UpdateRange(r.clone()));
+        });
+
+        self
+    }
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        let e = self.entity();
+
+        scaling.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, GraphEvents::UpdateScaling(s.clone()))
         });
 
         self
