@@ -1,4 +1,4 @@
-use super::RangeModifiers;
+use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::utils::{ValueScaling, VisualizerBuffer};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
@@ -31,12 +31,6 @@ where
     range: (f32, f32),
     scaling: ValueScaling,
     fill_from: FillFrom,
-}
-
-enum FillFrom {
-    Top,
-    Bottom,
-    Value(f32),
 }
 
 enum GraphEvents {
@@ -138,7 +132,11 @@ where
     }
 }
 
-pub trait GraphModifiers {
+impl<'a, L, I> FillModifiers for Handle<'a, Graph<L, I>>
+where
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
+{
     /// Allows for the graph to be filled from the top instead of the bottom.
     ///
     /// This is useful for certain graphs like gain reduction meters.
@@ -151,12 +149,15 @@ pub trait GraphModifiers {
     ///
     /// ```
     /// Graph::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels)
-    ///     .fill_from_top()
+    ///     .fill_from_max()
     ///     .color(Color::rgba(255, 0, 0, 160))
     ///     .background_color(Color::rgba(255, 0, 0, 60));
     /// ```
-    fn fill_from_top(self) -> Self;
-
+    fn fill_from_max(self) -> Self {
+        self.modify(|graph| {
+            graph.fill_from = FillFrom::Top;
+        })
+    }
     /// Allows for the graph to be filled from any desired level.
     ///
     /// This is useful for certain graphs like gain reduction meters.
@@ -173,19 +174,6 @@ pub trait GraphModifiers {
     ///     .color(Color::rgba(255, 0, 0, 160))
     ///     .background_color(Color::rgba(255, 0, 0, 60));
     /// ```
-    fn fill_from_value(self, level: f32) -> Self;
-}
-
-impl<'a, L, I> GraphModifiers for Handle<'a, Graph<L, I>>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
-    fn fill_from_top(self) -> Self {
-        self.modify(|graph| {
-            graph.fill_from = FillFrom::Top;
-        })
-    }
     fn fill_from_value(self, level: f32) -> Self {
         self.modify(|graph| {
             graph.fill_from = FillFrom::Value(level);
