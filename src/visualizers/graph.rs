@@ -30,7 +30,13 @@ where
     buffer: L,
     range: (f32, f32),
     scaling: ValueScaling,
-    fill_from: f32,
+    fill_from: FillFrom,
+}
+
+enum FillFrom {
+    Top,
+    Bottom,
+    Value(f32),
 }
 
 enum GraphEvents {
@@ -53,7 +59,7 @@ where
             buffer,
             range: r,
             scaling: scaling.get_val(cx),
-            fill_from: r.0,
+            fill_from: FillFrom::Bottom,
         }
         .build(cx, |_| {})
         .range(range)
@@ -102,8 +108,13 @@ where
         }
 
         let mut fill = stroke.clone();
-        let fill_from_n = 1.0
-            - ValueScaling::Linear.value_to_normalized(self.fill_from, self.range.0, self.range.1);
+        let fill_from_n = match self.fill_from {
+            FillFrom::Top => 0.0,
+            FillFrom::Bottom => 1.0,
+            FillFrom::Value(val) => {
+                1.0 - ValueScaling::Linear.value_to_normalized(val, self.range.0, self.range.1)
+            }
+        };
 
         fill.line_to(x + w, y + h * fill_from_n);
         fill.line_to(x, y + h * fill_from_n);
@@ -140,11 +151,11 @@ pub trait GraphModifiers {
     ///
     /// ```
     /// Graph::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels)
-    ///     .should_fill_from_top(true)
+    ///     .fill_from_top()
     ///     .color(Color::rgba(255, 0, 0, 160))
     ///     .background_color(Color::rgba(255, 0, 0, 60));
     /// ```
-    fn should_fill_from_top(self, fill_from_top: bool) -> Self;
+    fn fill_from_top(self) -> Self;
 
     /// Allows for the graph to be filled from any desired level.
     ///
@@ -158,11 +169,11 @@ pub trait GraphModifiers {
     ///
     /// ```
     /// Graph::new(cx, Data::gain_mult, (-32.0, 6.0), ValueScaling::Decibels)
-    ///     .fill_from(1.0)
+    ///     .fill_from(0.0) // Fills the graph from 0.0dB downwards
     ///     .color(Color::rgba(255, 0, 0, 160))
     ///     .background_color(Color::rgba(255, 0, 0, 60));
     /// ```
-    fn fill_from(self, level: f32) -> Self;
+    fn fill_from_value(self, level: f32) -> Self;
 }
 
 impl<'a, L, I> GraphModifiers for Handle<'a, Graph<L, I>>
@@ -170,18 +181,14 @@ where
     L: Lens<Target = Arc<Mutex<I>>>,
     I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
-    fn should_fill_from_top(self, fill_from_top: bool) -> Self {
+    fn fill_from_top(self) -> Self {
         self.modify(|graph| {
-            graph.fill_from = if fill_from_top {
-                graph.range.1
-            } else {
-                graph.range.0
-            };
+            graph.fill_from = FillFrom::Top;
         })
     }
-    fn fill_from(self, level: f32) -> Self {
+    fn fill_from_value(self, level: f32) -> Self {
         self.modify(|graph| {
-            graph.fill_from = level;
+            graph.fill_from = FillFrom::Value(level);
         })
     }
 }
