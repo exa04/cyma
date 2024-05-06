@@ -31,23 +31,21 @@ pub struct UnitRuler {}
 
 impl UnitRuler {
     pub fn new<'a>(
-        cx: &mut Context,
-        display_range: impl Res<(f32, f32)>,
+        cx: &'a mut Context,
+        range: (f32, f32),
         scaling: ValueScaling,
-        values: impl Res<Vec<(f32, &'static str)>>,
+        values: Vec<(f32, &'static str)>,
         orientation: Orientation,
-    ) -> Handle<Self> {
+    ) -> Handle<'a, Self> {
         Self {}.build(cx, |cx| {
-            let display_range = display_range.get_val(cx);
             let normalized_values = values
-                .get_val(cx)
                 .into_iter()
-                .map(|v| {
+                .filter_map(|v| {
                     // Normalize the value according to the provided scaling, within the provided range
-                    (
-                        scaling.value_to_normalized(v.0, display_range.0, display_range.1),
-                        v.1,
-                    )
+                    scaling
+                        .value_to_normalized_optional(v.0, range.0, range.1)
+                        // If it is not in range, discard it by returning a `None`, which filter_map filters out
+                        .map(|value| (value, v.1))
                 })
                 .collect::<Vec<(f32, &'static str)>>();
             ZStack::new(cx, |cx| {
