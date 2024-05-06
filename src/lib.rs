@@ -7,6 +7,8 @@ pub mod utils;
 pub mod visualizers;
 
 pub mod prelude {
+    pub use crate::controls::*;
     pub use crate::utils::ValueScaling;
     pub use crate::utils::VisualizerBuffer;
+    pub use crate::visualizers::*;
 }
