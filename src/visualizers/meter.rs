@@ -1,9 +1,8 @@
 use std::sync::{Arc, Mutex};
 
-use crate::prelude::FillModifiers;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-use super::{FillFrom, RangeModifiers};
+use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::utils::ValueScaling;
 use crate::utils::VisualizerBuffer;
 
