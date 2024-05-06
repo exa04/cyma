@@ -1,8 +1,9 @@
 use std::sync::{Arc, Mutex};
 
+use crate::prelude::FillModifiers;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-use super::RangeModifiers;
+use super::{FillFrom, RangeModifiers};
 use crate::utils::ValueScaling;
 use crate::utils::VisualizerBuffer;
 
@@ -32,6 +33,7 @@ where
     buffer: L,
     range: (f32, f32),
     scaling: ValueScaling,
+    fill_from: FillFrom,
     orientation: Orientation,
 }
 
@@ -51,6 +53,7 @@ where
             buffer,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
+            fill_from: FillFrom::Bottom,
             orientation,
         }
         .build(cx, |_| {})
@@ -97,8 +100,20 @@ where
                 outline.close();
                 canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
 
-                path.line_to(x + w, y + h);
-                path.line_to(x, y + h);
+                let fill_from_n = match self.fill_from {
+                    FillFrom::Top => 0.0,
+                    FillFrom::Bottom => 1.0,
+                    FillFrom::Value(val) => {
+                        1.0 - ValueScaling::Linear.value_to_normalized(
+                            val,
+                            self.range.0,
+                            self.range.1,
+                        )
+                    }
+                };
+
+                path.line_to(x + w, y + h * fill_from_n);
+                path.line_to(x, y + h * fill_from_n);
                 path.close();
 
                 canvas.fill_path(&path, &vg::Paint::color(cx.background_color().into()));
@@ -111,8 +126,16 @@ where
                 outline.close();
                 canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
 
-                path.line_to(x, y + h);
-                path.line_to(x, y);
+                let fill_from_n = match self.fill_from {
+                    FillFrom::Top => 1.0,
+                    FillFrom::Bottom => 0.0,
+                    FillFrom::Value(val) => {
+                        ValueScaling::Linear.value_to_normalized(val, self.range.0, self.range.1)
+                    }
+                };
+
+                path.line_to(x + w * fill_from_n, y + h);
+                path.line_to(x + w * fill_from_n, y);
                 path.close();
 
                 canvas.fill_path(&path, &vg::Paint::color(cx.background_color().into()));
@@ -126,6 +149,55 @@ where
     }
 }
 
+impl<'a, L, I> FillModifiers for Handle<'a, Meter<L, I>>
+where
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
+{
+    /// Allows for the meter to be filled from the maximum instead of the minimum value.
+    ///
+    /// This is useful for certain meters like gain reduction meters.
+    ///
+    /// # Example
+    ///
+    /// Here's a gain reduction meter, which you could overlay on top of a peak meter.
+    ///
+    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
+    ///
+    /// ```
+    /// Meter::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels, Orientation::Vertical)
+    ///     .fill_from_max()
+    ///     .color(Color::rgba(255, 0, 0, 160))
+    ///     .background_color(Color::rgba(255, 0, 0, 60));
+    /// ```
+    fn fill_from_max(self) -> Self {
+        self.modify(|meter| {
+            meter.fill_from = FillFrom::Top;
+        })
+    }
+    /// Allows for the meter to be filled from any desired level.
+    ///
+    /// This is useful for certain meters like gain reduction meters.
+    ///
+    /// # Example
+    ///
+    /// Here's a gain reduction meter, which you could overlay on top of a peak meter.
+    ///
+    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
+    ///
+    /// ```
+    /// Meter::new(cx, Data::gain_mult, (-32.0, 6.0), ValueScaling::Decibels, Orientation::Vertical)
+    ///     .fill_from(0.0) // Fills the meter from 0.0dB downwards
+    ///     .color(Color::rgba(255, 0, 0, 160))
+    ///     .background_color(Color::rgba(255, 0, 0, 60));
+    /// ```
+    fn fill_from_value(self, level: f32) -> Self {
+        self.modify(|meter| {
+            meter.fill_from = FillFrom::Value(level);
+        })
+    }
+}
+
 impl<'a, L, I> RangeModifiers for Handle<'a, Meter<L, I>>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
@@ -135,7 +207,7 @@ where
         let e = self.entity();
 
         range.set_or_bind(self.context(), e, move |cx, r| {
-            (*cx).emit_to(e, MeterEvents::UpdateRange(r.clone()));
+            (*cx).emit_to(e, MeterEvents::UpdateRange(r));
         });
 
         self
