@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
+use super::RangeModifiers;
 use crate::utils::{ValueScaling, VisualizerBuffer, WaveformBuffer};
 
 /// Waveform display for real-time input.
@@ -29,8 +30,13 @@ where
     B: Lens<Target = Arc<Mutex<WaveformBuffer>>>,
 {
     buffer: B,
-    display_range: (f32, f32),
+    range: (f32, f32),
     scaling: ValueScaling,
+}
+
+enum OscilloscopeEvents {
+    UpdateRange((f32, f32)),
+    UpdateScaling(ValueScaling),
 }
 
 impl<B> Oscilloscope<B>
@@ -38,7 +44,7 @@ where
     B: Lens<Target = Arc<Mutex<WaveformBuffer>>>,
 {
     /// Creates a new Oscilloscope.
-    ///    
+    ///
     /// Takes in a `buffer`, which should be used to store the peak values. You
     /// need to write to it inside your plugin code, thread-safely send it to
     /// the editor thread, and then pass it into this oscilloscope. Which is
@@ -46,15 +52,17 @@ where
     pub fn new(
         cx: &mut Context,
         buffer: B,
-        display_range: impl Res<(f32, f32)>,
+        range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
     ) -> Handle<Self> {
         Self {
             buffer,
-            display_range: display_range.get_val(cx),
+            range: range.get_val(cx),
             scaling: scaling.get_val(cx),
         }
         .build(cx, |_| {})
+        .range(range)
+        .scaling(scaling)
     }
 }
 
@@ -81,18 +89,14 @@ where
         let width_delta = w / ring_buf.len() as f32;
 
         // Local minima (bottom part of waveform)
-        let mut py = self.scaling.value_to_normalized(
-            ring_buf[0].0,
-            self.display_range.0,
-            self.display_range.1,
-        );
+        let mut py = self
+            .scaling
+            .value_to_normalized(ring_buf[0].0, self.range.0, self.range.1);
         fill.move_to(x, y + h * (1. - py) + 1.);
         for i in 1..ring_buf.len() {
-            py = self.scaling.value_to_normalized(
-                ring_buf[i].0,
-                self.display_range.0,
-                self.display_range.1,
-            );
+            py = self
+                .scaling
+                .value_to_normalized(ring_buf[i].0, self.range.0, self.range.1);
 
             fill.line_to(x + width_delta * i as f32, y + h * (1. - py) + 1.);
         }
@@ -103,16 +107,16 @@ where
         // Local maxima (top part of waveform)
         py = self.scaling.value_to_normalized(
             ring_buf[ring_buf.len() - 1].1,
-            self.display_range.0,
-            self.display_range.1,
+            self.range.0,
+            self.range.1,
         );
         fill.line_to(x + w, y + h * (1. - py) + 1.);
         top_stroke.move_to(x + w, y + h * (1. - py) + 1.);
         for i in 1..ring_buf.len() {
             py = self.scaling.value_to_normalized(
                 ring_buf[ring_buf.len() - i].1,
-                self.display_range.0,
-                self.display_range.1,
+                self.range.0,
+                self.range.1,
             );
 
             fill.line_to(x + w - width_delta * i as f32, y + h * (1. - py) + 1.);
@@ -124,5 +128,35 @@ where
             &fill,
             &vg::Paint::color(cx.font_color().into()).with_line_width(0.),
         );
+    }
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+        event.map(|e, _| match e {
+            OscilloscopeEvents::UpdateRange(v) => self.range = *v,
+            OscilloscopeEvents::UpdateScaling(v) => self.scaling = *v,
+        });
+    }
+}
+
+impl<'a, B> RangeModifiers for Handle<'a, Oscilloscope<B>>
+where
+    B: Lens<Target = Arc<Mutex<WaveformBuffer>>>,
+{
+    fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
+        let e = self.entity();
+
+        range.set_or_bind(self.context(), e, move |cx, r| {
+            (*cx).emit_to(e, OscilloscopeEvents::UpdateRange(r));
+        });
+
+        self
+    }
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        let e = self.entity();
+
+        scaling.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, OscilloscopeEvents::UpdateScaling(s));
+        });
+
+        self
     }
 }

@@ -1,12 +1,8 @@
-use nih_plug_vizia::vizia::{
-    binding::Res,
-    context::{Context, DrawContext},
-    vg,
-    view::{Canvas, Handle, View},
-    views::Orientation,
-};
+use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use crate::utils::ValueScaling;
+
+use super::RangeModifiers;
 
 /// Generic grid backdrop that displays either horizontal or vertical lines.
 ///
@@ -43,6 +39,11 @@ pub struct Grid {
     orientation: Orientation,
 }
 
+enum GridEvents {
+    UpdateRange((f32, f32)),
+    UpdateScaling(ValueScaling),
+}
+
 impl Grid {
     pub fn new(
         cx: &mut Context,
@@ -58,6 +59,8 @@ impl Grid {
             orientation,
         }
         .build(cx, |_| {})
+        .range(range)
+        .scaling(scaling)
     }
 }
 
@@ -114,5 +117,32 @@ impl View for Grid {
             },
             &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
         );
+    }
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|e, _| match e {
+            GridEvents::UpdateRange(v) => self.range = *v,
+            GridEvents::UpdateScaling(v) => self.scaling = *v,
+        });
+    }
+}
+
+impl<'a> RangeModifiers for Handle<'a, Grid> {
+    fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
+        let e = self.entity();
+
+        range.set_or_bind(self.context(), e, move |cx, r| {
+            (*cx).emit_to(e, GridEvents::UpdateRange(r.clone()));
+        });
+
+        self
+    }
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        let e = self.entity();
+
+        scaling.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, GridEvents::UpdateScaling(s));
+        });
+
+        self
     }
 }

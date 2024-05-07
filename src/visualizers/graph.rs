@@ -1,12 +1,7 @@
+use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::utils::{ValueScaling, VisualizerBuffer};
 
-use nih_plug_vizia::vizia::style::Length::Value;
-use nih_plug_vizia::vizia::{
-    binding::{Lens, LensExt, Res},
-    context::{Context, DrawContext},
-    vg,
-    view::{Canvas, Handle, View},
-};
+use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
 
 /// Real-time graph displaying information that is stored inside a buffer
@@ -33,9 +28,14 @@ where
     I: VisualizerBuffer<f32> + 'static,
 {
     buffer: L,
-    display_range: (f32, f32),
+    range: (f32, f32),
     scaling: ValueScaling,
-    fill_from: f32,
+    fill_from: FillFrom,
+}
+
+enum GraphEvents {
+    UpdateRange((f32, f32)),
+    UpdateScaling(ValueScaling),
 }
 
 impl<L, I> Graph<L, I>
@@ -46,17 +46,18 @@ where
     pub fn new(
         cx: &mut Context,
         buffer: L,
-        display_range: impl Res<(f32, f32)>,
-        scaling: impl Res<ValueScaling>,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
     ) -> Handle<Self> {
-        let range = display_range.get_val(cx);
         Self {
             buffer,
-            display_range: range,
+            range: range.get_val(cx),
             scaling: scaling.get_val(cx),
-            fill_from: range.0,
+            fill_from: FillFrom::Bottom,
         }
         .build(cx, |_| {})
+        .range(range)
+        .scaling(scaling)
     }
 }
 
@@ -67,6 +68,12 @@ where
 {
     fn element(&self) -> Option<&'static str> {
         Some("graph")
+    }
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+        event.map(|e, _| match e {
+            GraphEvents::UpdateRange(v) => self.range = *v,
+            GraphEvents::UpdateScaling(s) => self.scaling = *s,
+        });
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();
@@ -82,21 +89,17 @@ where
         let binding = self.buffer.get(cx);
         let ring_buf = &(binding.lock().unwrap());
 
-        let mut peak = self.scaling.value_to_normalized(
-            ring_buf[0],
-            self.display_range.0,
-            self.display_range.1,
-        );
+        let mut peak = self
+            .scaling
+            .value_to_normalized(ring_buf[0], self.range.0, self.range.1);
 
         stroke.move_to(x, y + h * (1. - peak));
 
         for i in 1..ring_buf.len() {
             // Normalize peak value
-            peak = self.scaling.value_to_normalized(
-                ring_buf[i],
-                self.display_range.0,
-                self.display_range.1,
-            );
+            peak = self
+                .scaling
+                .value_to_normalized(ring_buf[i], self.range.0, self.range.1);
 
             // Draw peak as a new point
             stroke.line_to(
@@ -106,12 +109,13 @@ where
         }
 
         let mut fill = stroke.clone();
-        let fill_from_n = 1.0
-            - ValueScaling::Linear.value_to_normalized(
-                self.fill_from,
-                self.display_range.0,
-                self.display_range.1,
-            );
+        let fill_from_n = match self.fill_from {
+            FillFrom::Top => 0.0,
+            FillFrom::Bottom => 1.0,
+            FillFrom::Value(val) => {
+                1.0 - ValueScaling::Linear.value_to_normalized(val, self.range.0, self.range.1)
+            }
+        };
 
         fill.line_to(x + w, y + h * fill_from_n);
         fill.line_to(x, y + h * fill_from_n);
@@ -126,7 +130,11 @@ where
     }
 }
 
-pub trait GraphModifiers {
+impl<'a, L, I> FillModifiers for Handle<'a, Graph<L, I>>
+where
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32, Output = f32> + 'static,
+{
     /// Allows for the graph to be filled from the top instead of the bottom.
     ///
     /// This is useful for certain graphs like gain reduction meters.
@@ -139,12 +147,15 @@ pub trait GraphModifiers {
     ///
     /// ```
     /// Graph::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels)
-    ///     .should_fill_from_top(true)
+    ///     .fill_from_max()
     ///     .color(Color::rgba(255, 0, 0, 160))
     ///     .background_color(Color::rgba(255, 0, 0, 60));
     /// ```
-    fn should_fill_from_top(self, fill_from_top: bool) -> Self;
-
+    fn fill_from_max(self) -> Self {
+        self.modify(|graph| {
+            graph.fill_from = FillFrom::Top;
+        })
+    }
     /// Allows for the graph to be filled from any desired level.
     ///
     /// This is useful for certain graphs like gain reduction meters.
@@ -157,30 +168,38 @@ pub trait GraphModifiers {
     ///
     /// ```
     /// Graph::new(cx, Data::gain_mult, (-32.0, 6.0), ValueScaling::Decibels)
-    ///     .fill_from(1.0)
+    ///     .fill_from(0.0) // Fills the graph from 0.0dB downwards
     ///     .color(Color::rgba(255, 0, 0, 160))
     ///     .background_color(Color::rgba(255, 0, 0, 60));
     /// ```
-    fn fill_from(self, level: f32) -> Self;
+    fn fill_from_value(self, level: f32) -> Self {
+        self.modify(|graph| {
+            graph.fill_from = FillFrom::Value(level);
+        })
+    }
 }
 
-impl<'a, L, I> GraphModifiers for Handle<'a, Graph<L, I>>
+impl<'a, L, I> RangeModifiers for Handle<'a, Graph<L, I>>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
     I: VisualizerBuffer<f32, Output = f32> + 'static,
 {
-    fn should_fill_from_top(self, fill_from_top: bool) -> Self {
-        self.modify(|graph| {
-            graph.fill_from = if fill_from_top {
-                graph.display_range.1
-            } else {
-                graph.display_range.0
-            };
-        })
+    fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
+        let e = self.entity();
+
+        range.set_or_bind(self.context(), e, move |cx, r| {
+            (*cx).emit_to(e, GraphEvents::UpdateRange(r.clone()));
+        });
+
+        self
     }
-    fn fill_from(self, level: f32) -> Self {
-        self.modify(|graph| {
-            graph.fill_from = level;
-        })
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        let e = self.entity();
+
+        scaling.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, GraphEvents::UpdateScaling(s.clone()))
+        });
+
+        self
     }
 }
