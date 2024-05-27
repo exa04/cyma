@@ -1,5 +1,5 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::utils::HistogramBuffer;
+use crate::utils::{HistogramBuffer, VisualizerBuffer, ValueScaling};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex};
 pub struct Histogram<L, I>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
-    I: HistogramBuffer + 'static,
+    I: VisualizerBuffer<f32> + 'static,
 {
     buffer: L,
     range: (f32, f32),
@@ -37,7 +37,7 @@ enum HistogramEvents {
 impl<L, I> Histogram<L, I>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
-    I: HistogramBuffer + 'static,
+    I: VisualizerBuffer<f32> + 'static,
 {
     pub fn new(
         cx: &mut Context,
@@ -52,14 +52,14 @@ where
         }
         .build(cx, |_| {})
         .range(range)
-        .decay(decay)
+        // .decay(decay)
     }
 }
 
 impl<L, I> View for Histogram<L, I>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
-    I: HistogramBuffer + 'static,
+    I: VisualizerBuffer<f32> + 'static,
 {
     fn element(&self) -> Option<&'static str> {
         Some("histogram")
@@ -106,34 +106,48 @@ where
     }
 }
 
+
 impl<'a, L, I> FillModifiers for Handle<'a, Histogram<L, I>>
 where
     L: Lens<Target = Arc<Mutex<I>>>,
-    I: HistogramBuffer + 'static,
+    I: VisualizerBuffer<f32> + 'static,
 {
+    // stubs
+    fn fill_from_max(self) -> Self { self }
+    fn fill_from_value(self, level: f32) -> Self { self }
 }
 
-// impl<'a, L, I> RangeModifiers for Handle<'a, Histogram<L, I>>
-// where
-// L: Lens<Target = Arc<Mutex<I>>>,
-// I: HistogramBuffer + 'static,
-// {
-// fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
-// let e = self.entity();
+impl<'a, L, I> RangeModifiers for Handle<'a, Histogram<L, I>>
+where
+    L: Lens<Target = Arc<Mutex<I>>>,
+    I: VisualizerBuffer<f32> + 'static,
+{
+    fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
+        let e = self.entity();
 
-// range.set_or_bind(self.context(), e, move |cx, r| {
-// (*cx).emit_to(e, HistogramEvents::UpdateRange(r.clone()));
-// });
+        range.set_or_bind(self.context(), e, move |cx, r| {
+            (*cx).emit_to(e, HistogramEvents::UpdateRange(r.clone()));
+        });
 
-// self
-// }
-// fn decay(mut self, decay: impl Res<f32>) -> Self {
-// let e = self.entity();
+        self
+    }
 
-// decay.set_or_bind(self.context(), e, move |cx, s| {
-// (*cx).emit_to(e, HistogramEvents::UpdateDecay(s.clone()))
-// });
+    fn scaling(mut self, scaling: impl Res<ValueScaling>) -> Self {
+        // let e = self.entity();
 
-// self
-// }
-// }
+        // scaling.set_or_bind(self.context(), e, move |cx, s| {
+        // (*cx).emit_to(e, GraphEvents::UpdateScaling(s.clone()))
+        // });
+
+        self
+    }
+    // fn decay(mut self, decay: impl Res<f32>) -> Self {
+    // let e = self.entity();
+
+    // decay.set_or_bind(self.context(), e, move |cx, s| {
+    // (*cx).emit_to(e, HistogramEvents::UpdateDecay(s.clone()))
+    // });
+
+    // self
+    // }
+}

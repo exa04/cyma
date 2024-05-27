@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
+use super::{VisualizerBuffer};
 
 /// This buffer creates histogram data with variable decay from a signal.
 ///
@@ -11,7 +12,7 @@ pub struct HistogramBuffer {
     size: usize,
     data: Vec<f32>,
     sample_rate: f32,
-    /// The decay time for the peak amplitude to halve.
+    // The decay time.
     decay: f32,
     // when a sample is added to a bin, add this number to that bin
     // then scale the whole vector so the max is 1
@@ -42,7 +43,7 @@ impl HistogramBuffer {
         }
     }
 
-    /// Sets the decay time of the `PeakBuffer`.
+    /// Sets the decay time of the `HistogramBuffer`.
     ///
     /// * `decay` - The time it takes for a sample inside the buffer to decrease by -12dB, in milliseconds
     pub fn set_decay(self: &mut Self, decay: f32) {
@@ -63,7 +64,7 @@ impl HistogramBuffer {
     ///     buffer_config: &BufferConfig,
     ///     _context: &mut impl InitContext<Self>,
     /// ) -> bool {
-    ///     match self.peak_buffer.lock() {
+    ///     match self.histogram_buffer.lock() {
     ///         Ok(mut buffer) => {
     ///             buffer.set_sample_rate(buffer_config.sample_rate);
     ///         }
@@ -83,44 +84,6 @@ impl HistogramBuffer {
         self.addition_nr =  self.sample_rate/(self.decay*self.size as f32*48000.0);
     }
 
-    /// Resizes the buffer to the given size.
-    pub fn resize(self: &mut Self, size: usize) {
-        if size == self.len() {
-            return;
-        }
-        self.clear();
-        self.size = size;
-        // calculate the linear edge values from MIN_EDGE to MAX_EDGE, evenly spaced in the db domain
-        let nr_edges: usize = size - 1;
-        self.edges = (0..nr_edges)
-            .map(|x| Self::db_to_linear(MIN_EDGE + x as f32 * ((MAX_EDGE - MIN_EDGE) / (nr_edges as f32 - 1.0))))
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
-        self.update();
-    }
-
-    /// Add an element into the HistogramBuffer.
-    /// Once added, all values are scaled so the largest is 1
-    pub fn add(self: &mut Self, value: f32) {
-        // let bin_index = Self::find_bin(value);
-        let bin_index = self.find_bin(value);
-        self.data[bin_index] += self.addition_nr; // Increment the count for the bin
-        // scale so the largest value becomes 1.
-        let largest = self.data.iter().fold(std::f32::MIN, |a,b| a.max(*b));
-        for i in 0..self.size-1 {
-            self.data[i] /= largest;
-        }
-    }
-
-    /// Clears the entire buffer, filling it with default values (usually 0)
-    pub fn clear(self: &mut Self) {
-        self.data.iter_mut().for_each(|x| *x = f32::default());
-    }
-
-    pub fn len(self: &Self) -> usize {
-        self.size
-    }
 
     fn db_to_linear(db: f32) -> f32 {
         10.0_f32.powf(db / 20.0)
@@ -154,6 +117,90 @@ impl HistogramBuffer {
 
 }
 
+
+impl VisualizerBuffer<f32> for HistogramBuffer {
+    /// Add an element into the HistogramBuffer.
+    /// Once added, all values are scaled so the largest is 1
+    fn enqueue(self: &mut Self, value: f32) {
+        // let bin_index = Self::find_bin(value);
+        let bin_index = self.find_bin(value);
+        self.data[bin_index] += self.addition_nr; // Increment the count for the bin
+        // scale so the largest value becomes 1.
+        let largest = self.data.iter().fold(std::f32::MIN, |a,b| a.max(*b));
+        for i in 0..self.size-1 {
+            self.data[i] /= largest;
+        }
+    }
+
+    fn enqueue_buffer(
+        self: &mut Self,
+        buffer: &mut nih_plug::buffer::Buffer,
+        channel: Option<usize>,
+    ) {
+        match channel {
+            Some(channel) => {
+                for sample in buffer.as_slice()[channel].into_iter() {
+                    self.enqueue(*sample);
+                }
+            }
+            None => {
+                for sample in buffer.iter_samples() {
+                    self.enqueue(
+                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
+                    );
+                }
+            }
+        }
+    }
+
+    /// Resizes the buffer to the given size.
+    fn resize(self: &mut Self, size: usize) {
+        if size == self.len() {
+            return;
+        }
+        self.clear();
+        self.size = size;
+        // calculate the linear edge values from MIN_EDGE to MAX_EDGE, evenly spaced in the db domain
+        let nr_edges: usize = size - 1;
+        self.edges = (0..nr_edges)
+            .map(|x| Self::db_to_linear(MIN_EDGE + x as f32 * ((MAX_EDGE - MIN_EDGE) / (nr_edges as f32 - 1.0))))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        self.update();
+    }
+
+    /// Clears the entire buffer, filling it with default values (usually 0)
+    fn clear(self: &mut Self) {
+        self.data.iter_mut().for_each(|x| *x = f32::default());
+    }
+
+    fn len(self: &Self) -> usize {
+        self.size
+    }
+
+    /// Grows the buffer, **clearing it**.
+    fn grow(self: &mut Self, size: usize) {
+        if size == self.len() {
+            return;
+        }
+        self.clear();
+        self.size = size;
+        // calculate the linear edge values from MIN_EDGE to MAX_EDGE, evenly spaced in the db domain
+        let nr_edges: usize = size - 1;
+        self.edges = (0..nr_edges)
+            .map(|x| Self::db_to_linear(MIN_EDGE + x as f32 * ((MAX_EDGE - MIN_EDGE) / (nr_edges as f32 - 1.0))))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+        self.update();
+    }
+
+    /// Shrinks the buffer, **clearing it**.
+    fn shrink(self: &mut Self, size: usize) {
+        self.grow(size)
+    }
+}
 impl Index<usize> for HistogramBuffer {
     type Output = f32;
 

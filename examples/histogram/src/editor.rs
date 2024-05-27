@@ -40,7 +40,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                 )
                 .color(Color::rgb(60, 60, 60));
 
-                Histogram::new(cx, Data::histogram_buffer, (-32.0, 8.0), ValueScaling::Decibels)
+                Histogram::new(cx, Data::histogram_buffer, (-32.0, 8.0), 0.1)
                     .color(Color::rgba(255, 255, 255, 160))
                     .background_color(Color::rgba(255, 255, 255, 60));
             })
