@@ -66,12 +66,12 @@ where
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
         let bounds = cx.bounds();
 
-        let line_width = 20.0*cx.scale_factor();
+        let line_width = cx.scale_factor();
 
-        let x = bounds.x + line_width / 2.0;
-        let y = bounds.y + line_width / 2.0;
-        let w = bounds.w - line_width;
-        let h = bounds.h - line_width;
+        let x = bounds.x;
+        let y = bounds.y;
+        let w = bounds.w;
+        let h = bounds.h;
 
         let mut stroke = vg::Path::new();
         let binding = self.buffer.get(cx);
@@ -87,6 +87,7 @@ where
 
         // fill in with background color
         let mut fill = stroke.clone();
+        fill.line_to(x, y + h);
         fill.line_to(x, y);
         fill.close();
         canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
