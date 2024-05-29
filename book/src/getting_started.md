@@ -10,5 +10,5 @@ it to your `Cargo.toml`.
 + cyma = { git = "https://github.com/223230/cyma" }
 ```
 
-Then, you can use Cyma where you need it, by using ```cyma::prelude::*```. This
+Then, you can use Cyma where you need it, by using `cyma::prelude::*`. This
 will import the most important parts of Cyma.
