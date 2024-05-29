@@ -5,7 +5,8 @@ use super::{RingBuffer, VisualizerBuffer};
 
 /// Stores RMS amplitudes over time.
 ///
-/// This buffer keeps track of the windowed root mean squared amplitude of a signal.
+/// This buffer keeps track of the windowed root mean squared amplitudes of a
+/// signal.
 ///
 /// It needs to be provided a sample rate after initialization - do this inside your
 /// [`initialize()`](nih_plug::plugin::Plugin::initialize)` function!
@@ -33,7 +34,12 @@ pub struct RMSBuffer {
 }
 
 impl RMSBuffer {
-    pub fn new(size: usize, rms_duration: f32, duration: f32) -> Self {
+    /// Creates a new RMSBuffer
+    ///
+    /// * `size` - The length of the buffer in samples
+    /// * `duration` - The duration (in seconds) of the RMS data inside the buffer, in seconds
+    /// * `rms_duration` - The duration of each RMS window, in milliseconds
+    pub fn new(size: usize, duration: f32, rms_duration: f32) -> Self {
         Self {
             buffer: RingBuffer::<f32>::new(size),
             duration,
