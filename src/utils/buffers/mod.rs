@@ -1,16 +1,16 @@
+pub mod histogram_buffer;
 pub mod minima_buffer;
 pub mod peak_buffer;
 pub mod ring_buffer;
 pub mod waveform_buffer;
-pub mod histogram_buffer;
 
 use std::ops::{Index, IndexMut};
 
+pub use histogram_buffer::HistogramBuffer;
 pub use minima_buffer::MinimaBuffer;
 pub use peak_buffer::PeakBuffer;
 pub use ring_buffer::RingBuffer;
 pub use waveform_buffer::WaveformBuffer;
-pub use histogram_buffer::HistogramBuffer;
 
 pub trait VisualizerBuffer<T>: Index<usize> + IndexMut<usize> {
     /// Enqueues an element.

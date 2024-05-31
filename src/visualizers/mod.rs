@@ -2,23 +2,23 @@
 
 mod graph;
 mod grid;
+mod histogram;
 mod lissajous;
 mod meter;
 mod oscilloscope;
 mod spectrum_analyzer;
 mod unit_ruler;
 mod waveform;
-mod histogram;
 
 pub use graph::*;
 pub use grid::*;
+pub use histogram::*;
 pub use lissajous::*;
 pub use meter::*;
 pub use oscilloscope::*;
 pub use spectrum_analyzer::*;
 pub use unit_ruler::*;
 pub use waveform::*;
-pub use histogram::*;
 
 use super::utils::ValueScaling;
 use nih_plug_vizia::vizia::binding::Res;
