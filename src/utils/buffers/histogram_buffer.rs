@@ -135,7 +135,10 @@ impl HistogramBuffer {
 }
 
 impl VisualizerBuffer<f32> for HistogramBuffer {
-    fn enqueue(self: &mut Self, value: f32) {
+    /// Enqueues a single element.
+    ///
+    /// **Where possible, use [`enqueue_buffer`] instead!**
+    fn enqueue(&mut self, value: f32) {
         let value = value.abs();
         // don't enqueue silence
         if value > 0.0 {
@@ -148,25 +151,45 @@ impl VisualizerBuffer<f32> for HistogramBuffer {
         }
     }
 
-    fn enqueue_buffer(
-        self: &mut Self,
-        buffer: &mut nih_plug::buffer::Buffer,
-        channel: Option<usize>,
-    ) {
+    fn enqueue_buffer(&mut self, buffer: &mut nih_plug::buffer::Buffer, channel: Option<usize>) {
+        // don't enqueue silence
+        if !match channel {
+            Some(channel) => buffer.as_slice()[channel]
+                .iter()
+                .any(|sample| *sample != 0.0),
+            None => buffer
+                .as_slice()
+                .iter()
+                .any(|channel| channel.iter().any(|sample| *sample != 0.0)),
+        } {
+            return;
+        }
+
+        // "Pre-decay" all values
+        let decay_weight = self.decay_weight.powi(buffer.samples() as i32);
+
+        for i in 0..self.size - 1 {
+            self.data[i] *= decay_weight;
+        }
+
         match channel {
             Some(channel) => {
-                for sample in buffer.as_slice()[channel].into_iter() {
-                    self.enqueue(*sample);
+                for sample in buffer.as_slice()[channel].iter() {
+                    let value = (*sample).abs();
+                    let bin_index = self.find_bin(value);
+                    self.data[bin_index] += 1.0 - self.decay_weight; // Increment the count for the bin
                 }
             }
             None => {
                 for sample in buffer.iter_samples() {
-                    self.enqueue(
-                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
-                    );
+                    let value = (1. / sample.len() as f32)
+                        * sample.into_iter().map(|x| *x).sum::<f32>().abs();
+
+                    let bin_index = self.find_bin(value);
+                    self.data[bin_index] += 1.0 - self.decay_weight; // Increment the count for the bin
                 }
             }
-        }
+        };
     }
 
     /// Resizes the buffer to the given size, **clearing it**.
