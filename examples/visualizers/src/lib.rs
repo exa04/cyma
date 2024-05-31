@@ -1,5 +1,7 @@
 use cyma::prelude::*;
-use cyma::utils::{PeakBuffer, RingBuffer, SpectrumInput, SpectrumOutput, WaveformBuffer};
+use cyma::utils::{
+    HistogramBuffer, PeakBuffer, RingBuffer, SpectrumInput, SpectrumOutput, WaveformBuffer,
+};
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::{
@@ -16,6 +18,7 @@ pub struct VisualizersDemo {
     oscilloscope_buffer: Arc<Mutex<WaveformBuffer>>,
     peak_buffer: Arc<Mutex<PeakBuffer>>,
     lissajous_buffer: Arc<Mutex<RingBuffer<(f32, f32)>>>,
+    histogram_buffer: Arc<Mutex<HistogramBuffer>>,
 
     spectrum_input: SpectrumInput,
     spectrum_output: Arc<Mutex<SpectrumOutput>>,
@@ -37,6 +40,7 @@ impl Default for VisualizersDemo {
             params: Arc::new(DemoParams::default()),
             oscilloscope_buffer: Arc::new(Mutex::new(WaveformBuffer::new(800, 5.0))),
             peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 10.0, 50.))),
+            histogram_buffer: Arc::new(Mutex::new(HistogramBuffer::new(512, 1.0))),
             lissajous_buffer: Arc::new(Mutex::new(RingBuffer::new(2048))),
 
             spectrum_input,
@@ -45,7 +49,6 @@ impl Default for VisualizersDemo {
             // This is just some dummy data that doesn't change.
             waveform: Arc::new(Mutex::new(
                 (0..256)
-                    .into_iter()
                     .map(|x| {
                         let x = 2. * PI * x as f32 / 256.;
                         0.6 * (x).sin() + 0.3 * (x * 2.).sin() + 0.1 * (x * 4.).sin()
@@ -98,6 +101,7 @@ impl Plugin for VisualizersDemo {
             editor::Data::new(
                 self.oscilloscope_buffer.clone(),
                 self.peak_buffer.clone(),
+                self.histogram_buffer.clone(),
                 self.lissajous_buffer.clone(),
                 self.spectrum_output.clone(),
                 self.waveform.clone(),
@@ -124,6 +128,12 @@ impl Plugin for VisualizersDemo {
             }
             Err(_) => return false,
         }
+        match self.histogram_buffer.lock() {
+            Ok(mut buffer) => {
+                buffer.set_sample_rate(buffer_config.sample_rate);
+            }
+            Err(_) => return false,
+        }
 
         self.spectrum_input
             .update_sample_rate(buffer_config.sample_rate);
@@ -144,6 +154,10 @@ impl Plugin for VisualizersDemo {
                 .unwrap()
                 .enqueue_buffer(buffer, None);
             self.peak_buffer
+                .lock()
+                .unwrap()
+                .enqueue_buffer(buffer, None);
+            self.histogram_buffer
                 .lock()
                 .unwrap()
                 .enqueue_buffer(buffer, None);

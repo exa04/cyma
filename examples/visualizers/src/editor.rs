@@ -1,6 +1,6 @@
 use cyma::prelude::*;
 use cyma::{
-    utils::{PeakBuffer, RingBuffer, SpectrumOutput, WaveformBuffer},
+    utils::{HistogramBuffer, PeakBuffer, RingBuffer, SpectrumOutput, WaveformBuffer},
     visualizers::{
         Graph, Grid, Lissajous, LissajousGrid, Meter, Oscilloscope, SpectrumAnalyzer,
         SpectrumAnalyzerModifiers, SpectrumAnalyzerVariant, UnitRuler, Waveform,
@@ -14,6 +14,7 @@ use std::sync::{Arc, Mutex};
 pub(crate) struct Data {
     pub(crate) oscilloscope_buffer: Arc<Mutex<WaveformBuffer>>,
     pub(crate) peak_buffer: Arc<Mutex<PeakBuffer>>,
+    pub(crate) histogram_buffer: Arc<Mutex<HistogramBuffer>>,
     pub(crate) lissajous_buffer: Arc<Mutex<RingBuffer<(f32, f32)>>>,
     pub(crate) spectrum: Arc<Mutex<SpectrumOutput>>,
 
@@ -24,6 +25,7 @@ impl Data {
     pub(crate) fn new(
         oscilloscope_buffer: Arc<Mutex<WaveformBuffer>>,
         peak_buffer: Arc<Mutex<PeakBuffer>>,
+        histogram_buffer: Arc<Mutex<HistogramBuffer>>,
         lissajous_buffer: Arc<Mutex<RingBuffer<(f32, f32)>>>,
         spectrum: Arc<Mutex<SpectrumOutput>>,
         waveform: Arc<Mutex<Vec<f32>>>,
@@ -31,6 +33,7 @@ impl Data {
         Self {
             oscilloscope_buffer,
             peak_buffer,
+            histogram_buffer,
             lissajous_buffer,
             spectrum,
             waveform,
@@ -190,6 +193,11 @@ fn peak_graph(cx: &mut Context) {
             Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
                 .color(Color::rgba(255, 255, 255, 160))
                 .background_color(Color::rgba(255, 255, 255, 60));
+
+            Histogram::new(cx, Data::histogram_buffer, (-32.0, 8.0))
+                .color(Color::rgba(120, 120, 255, 160))
+                .background_color(Color::rgba(120, 120, 255, 100))
+                .width(Pixels(120.));
         })
         .background_color(Color::rgb(16, 16, 16));
 
