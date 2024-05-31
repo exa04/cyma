@@ -82,7 +82,7 @@ impl HistogramBuffer {
     }
 
     fn decay_weight(decay: f32, sample_rate: f32) -> f32 {
-        0.25f64.powf((decay as f64 / 1000. * (sample_rate as f64)).recip()) as f32
+        0.25f64.powf((decay as f64 * sample_rate as f64 ).recip()) as f32
     }
 
     fn update(self: &mut Self) {
@@ -105,6 +105,8 @@ impl HistogramBuffer {
     fn find_bin(&self, value: f32) -> usize {
         // Check if the value is smaller than the first edge
         if value < self.edges[0] {
+            // if value < f32::EPSILON {
+            // if value == 0.0 {
             return 0;
         }
         // Check if the value is larger than the last edge

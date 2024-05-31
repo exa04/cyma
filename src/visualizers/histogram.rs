@@ -78,10 +78,7 @@ where
         let bins = &(binding.lock().unwrap());
         let nr_bins = bins.len();
 
-        // scale so the largest value becomes 1.
-        // let largest = self.buffer.iter().fold(std::f32::MIN, |a,b| a.max(*b));
         let mut largest = 0.0;
-
         for i in 0..nr_bins {
             if bins[i] > largest {
                 largest = bins[i];
@@ -94,7 +91,10 @@ where
         // the actual histogram
         for i in 1..nr_bins {
             stroke.line_to(
-                x + ((bins[nr_bins-i] / largest) * w)
+                x + (
+                    // scale so the largest value becomes 1.
+                    (bins[nr_bins-i] / largest)
+                        * w)
                     , y + h * i as f32 / (nr_bins - 1) as f32);
         }
 
