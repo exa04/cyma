@@ -1,5 +1,5 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::utils::{HistogramBuffer, VisualizerBuffer, ValueScaling};
+use crate::utils::{HistogramBuffer, ValueScaling, VisualizerBuffer};
 
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
@@ -36,11 +36,7 @@ impl<L> Histogram<L>
 where
     L: Lens<Target = Arc<Mutex<HistogramBuffer>>>,
 {
-    pub fn new(
-        cx: &mut Context,
-        buffer: L,
-        range: impl Res<(f32, f32)> + Clone,
-    ) -> Handle<Self> {
+    pub fn new(cx: &mut Context, buffer: L, range: impl Res<(f32, f32)> + Clone) -> Handle<Self> {
         Self {
             buffer,
             range: range.get_val(cx),
@@ -86,18 +82,20 @@ where
         }
 
         // start of the graph
-        stroke.move_to(x + bins[nr_bins-1] * w, y);
+        stroke.move_to(x + bins[nr_bins - 1] * w, y);
 
         // the actual histogram
-        for i in 1..nr_bins {
-            stroke.line_to(
-                x + (
-                    // scale so the largest value becomes 1.
-                    (bins[nr_bins-i] / largest)
-                        * w)
-                    , y + h * i as f32 / (nr_bins - 1) as f32);
+        if largest > 0.0 {
+            for i in 1..nr_bins {
+                stroke.line_to(
+                    x + (
+                        // scale so the largest value becomes 1.
+                        (bins[nr_bins - i] / largest) * w
+                    ),
+                    y + h * i as f32 / (nr_bins - 1) as f32,
+                );
+            }
         }
-
         // fill in with background color
         let mut fill = stroke.clone();
         fill.line_to(x, y + h);
@@ -112,14 +110,17 @@ where
     }
 }
 
-
 impl<'a, L> FillModifiers for Handle<'a, Histogram<L>>
 where
     L: Lens<Target = Arc<Mutex<HistogramBuffer>>>,
 {
     // stubs
-    fn fill_from_max(self) -> Self { self }
-    fn fill_from_value(self, level: f32) -> Self { self }
+    fn fill_from_max(self) -> Self {
+        self
+    }
+    fn fill_from_value(self, level: f32) -> Self {
+        self
+    }
 }
 
 impl<'a, L> RangeModifiers for Handle<'a, Histogram<L>>

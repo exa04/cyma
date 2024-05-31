@@ -1,7 +1,7 @@
 use cyma::prelude::*;
 use cyma::{
     utils::HistogramBuffer,
-    visualizers::{Histogram, Grid, UnitRuler},
+    visualizers::{Grid, Histogram, UnitRuler},
 };
 use nih_plug::editor::Editor;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};

@@ -1,6 +1,6 @@
+use super::VisualizerBuffer;
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
-use super::{VisualizerBuffer};
 
 /// This buffer creates histogram data with variable decay from a signal.
 ///
@@ -40,7 +40,7 @@ impl HistogramBuffer {
             sample_rate: 48000.,
             decay,
             decay_weight,
-            edges: vec![f32::default(); size-1],
+            edges: vec![f32::default(); size - 1],
         }
     }
 
@@ -82,14 +82,18 @@ impl HistogramBuffer {
     }
 
     fn decay_weight(decay: f32, sample_rate: f32) -> f32 {
-        0.25f64.powf((decay as f64 * sample_rate as f64 ).recip()) as f32
+        0.25f64.powf((decay as f64 * sample_rate as f64).recip()) as f32
     }
 
     fn update(self: &mut Self) {
         // calculate the linear edge values from MIN_EDGE to MAX_EDGE, evenly spaced in the db domain
         let nr_edges: usize = self.size - 1;
         self.edges = (0..nr_edges)
-            .map(|x| Self::db_to_linear(MIN_EDGE + x as f32 * ((MAX_EDGE - MIN_EDGE) / (nr_edges as f32 - 1.0))))
+            .map(|x| {
+                Self::db_to_linear(
+                    MIN_EDGE + x as f32 * ((MAX_EDGE - MIN_EDGE) / (nr_edges as f32 - 1.0)),
+                )
+            })
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
@@ -128,27 +132,24 @@ impl HistogramBuffer {
         // Return the bin index
         left as usize
     }
-
 }
 
-
-
 impl VisualizerBuffer<f32> for HistogramBuffer {
-    /// Add an element into the HistogramBuffer.
-    /// Once added, all values are scaled so the largest is 1
     fn enqueue(self: &mut Self, value: f32) {
         let value = value.abs();
+        // don't enqueue silence
         if value > 0.0 {
             let bin_index = self.find_bin(value);
-            self.data[bin_index] += (1.0-self.decay_weight); // Increment the count for the bin
-            for i in 0..self.size-1 {
+            self.data[bin_index] += (1.0 - self.decay_weight); // Increment the count for the bin
+            for i in 0..self.size - 1 {
+                // decay all values
                 self.data[i] *= self.decay_weight;
             }
         }
     }
 
-fn enqueue_buffer(
-    self: &mut Self,
+    fn enqueue_buffer(
+        self: &mut Self,
         buffer: &mut nih_plug::buffer::Buffer,
         channel: Option<usize>,
     ) {
@@ -177,7 +178,6 @@ fn enqueue_buffer(
         self.size = size;
         self.update();
     }
-
 
     /// Clears the entire buffer, filling it with default values (usually 0)
     fn clear(self: &mut Self) {
@@ -211,107 +211,107 @@ impl Index<usize> for HistogramBuffer {
         }
         &self.data[index]
     }
-    }
-    impl IndexMut<usize> for HistogramBuffer {
-        fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-            if index >= self.size {
-                panic!(
-                    "Invalid histogram buffer access: Index {} is out of range for histogram buffer of size {}",
-                    index, self.size
+}
+impl IndexMut<usize> for HistogramBuffer {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        if index >= self.size {
+            panic!(
+                "Invalid histogram buffer access: Index {} is out of range for histogram buffer of size {}",
+                index, self.size
                 );
-            }
-            &mut self.data[index]
         }
+        &mut self.data[index]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HistogramBuffer;
+
+    #[test]
+    fn basics() {
+        let mut rb = HistogramBuffer::<i32>::new(4);
+
+        // Is the buffer filled with zeroes?
+        assert_eq!(rb.data, vec![0; 4]);
+
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+
+        // Is the value at the tail (before the head) equal to 3?
+        assert_eq!(rb.data[(rb.head + rb.size - 1) % rb.size], 3);
+
+        // Is the value at the head equal to 0?
+        assert_eq!(rb.data[rb.head], 0);
+
+        rb.enqueue(4);
+        rb.enqueue(5);
+        rb.enqueue(6);
+
+        // Have the earlier values been overwritten?
+        assert!(!rb.data.contains(&1));
+        assert!(!rb.data.contains(&2));
+
+        // Do the last 4 values exist?
+        assert!(rb.data.contains(&3));
+        assert!(rb.data.contains(&4));
+        assert!(rb.data.contains(&5));
+        assert!(rb.data.contains(&6));
     }
 
-    #[cfg(test)]
-    mod tests {
-        use super::HistogramBuffer;
+    #[test]
+    fn clear() {
+        let mut rb = HistogramBuffer::<i32>::new(4);
 
-        #[test]
-        fn basics() {
-            let mut rb = HistogramBuffer::<i32>::new(4);
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
 
-            // Is the buffer filled with zeroes?
-            assert_eq!(rb.data, vec![0; 4]);
+        assert_ne!(rb.data, vec![0; 4]);
 
-            rb.enqueue(1);
-            rb.enqueue(2);
-            rb.enqueue(3);
+        rb.clear();
 
-            // Is the value at the tail (before the head) equal to 3?
-            assert_eq!(rb.data[(rb.head + rb.size - 1) % rb.size], 3);
+        assert_eq!(rb.data, vec![0; 4]);
+    }
 
-            // Is the value at the head equal to 0?
-            assert_eq!(rb.data[rb.head], 0);
+    #[test]
+    fn resize() {
+        let mut rb = HistogramBuffer::<i32>::new(4);
+        rb.enqueue(1);
+        rb.enqueue(2);
+        rb.enqueue(3);
+        rb.enqueue(4);
+        rb.enqueue(5);
+        rb.enqueue(6);
 
-            rb.enqueue(4);
-            rb.enqueue(5);
-            rb.enqueue(6);
-
-            // Have the earlier values been overwritten?
-            assert!(!rb.data.contains(&1));
-            assert!(!rb.data.contains(&2));
-
-            // Do the last 4 values exist?
-            assert!(rb.data.contains(&3));
-            assert!(rb.data.contains(&4));
-            assert!(rb.data.contains(&5));
-            assert!(rb.data.contains(&6));
+        // Growing HistogramBuffers
+        {
+            let mut rb_grown = rb.clone();
+            rb_grown.grow(6);
+            let mut rb_resized = rb.clone();
+            rb_resized.resize(6);
+            // Is the last inserted datum the same?
+            assert_eq!(
+                rb_grown.data[(rb_grown.head + rb_grown.size - 1) % rb_grown.size],
+                rb_resized.data[(rb_resized.head + rb_resized.size - 1) % rb_resized.size]
+            );
+            // Is the buffer zero-padded?
+            assert_eq!(rb_grown.data[rb_grown.head], 0);
         }
 
-        #[test]
-        fn clear() {
-            let mut rb = HistogramBuffer::<i32>::new(4);
-
-            rb.enqueue(1);
-            rb.enqueue(2);
-            rb.enqueue(3);
-
-            assert_ne!(rb.data, vec![0; 4]);
-
-            rb.clear();
-
-            assert_eq!(rb.data, vec![0; 4]);
+        // Shrinking HistogramBuffers
+        {
+            let mut rb_shrunk = rb.clone();
+            rb_shrunk.shrink(3);
+            let mut rb_resized = rb.clone();
+            rb_resized.resize(3);
+            // Is the last inserted datum the same?
+            assert_eq!(
+                rb_shrunk.data[(rb_shrunk.head + rb_shrunk.size - 1) % rb_shrunk.size],
+                rb_resized.data[(rb_resized.head + rb_resized.size - 1) % rb_resized.size]
+            );
         }
-
-        #[test]
-        fn resize() {
-            let mut rb = HistogramBuffer::<i32>::new(4);
-            rb.enqueue(1);
-            rb.enqueue(2);
-            rb.enqueue(3);
-            rb.enqueue(4);
-            rb.enqueue(5);
-            rb.enqueue(6);
-
-            // Growing HistogramBuffers
-            {
-                let mut rb_grown = rb.clone();
-                rb_grown.grow(6);
-                let mut rb_resized = rb.clone();
-                rb_resized.resize(6);
-                // Is the last inserted datum the same?
-                assert_eq!(
-                    rb_grown.data[(rb_grown.head + rb_grown.size - 1) % rb_grown.size],
-                        rb_resized.data[(rb_resized.head + rb_resized.size - 1) % rb_resized.size]
-                    );
-                    // Is the buffer zero-padded?
-                    assert_eq!(rb_grown.data[rb_grown.head], 0);
-                }
-
-                // Shrinking HistogramBuffers
-                {
-                    let mut rb_shrunk = rb.clone();
-                    rb_shrunk.shrink(3);
-                    let mut rb_resized = rb.clone();
-                    rb_resized.resize(3);
-                    // Is the last inserted datum the same?
-                    assert_eq!(
-                        rb_shrunk.data[(rb_shrunk.head + rb_shrunk.size - 1) % rb_shrunk.size],
-                        rb_resized.data[(rb_resized.head + rb_resized.size - 1) % rb_resized.size]
-                    );
-                }
     }
 
     #[test]
