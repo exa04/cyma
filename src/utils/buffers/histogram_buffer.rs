@@ -138,15 +138,17 @@ impl VisualizerBuffer<f32> for HistogramBuffer {
     /// Once added, all values are scaled so the largest is 1
     fn enqueue(self: &mut Self, value: f32) {
         let value = value.abs();
-        let bin_index = self.find_bin(value);
-        self.data[bin_index] += (1.0-self.decay_weight); // Increment the count for the bin
-        for i in 0..self.size-1 {
-            self.data[i] *= self.decay_weight;
+        if value > 0.0 {
+            let bin_index = self.find_bin(value);
+            self.data[bin_index] += (1.0-self.decay_weight); // Increment the count for the bin
+            for i in 0..self.size-1 {
+                self.data[i] *= self.decay_weight;
+            }
         }
     }
 
-    fn enqueue_buffer(
-        self: &mut Self,
+fn enqueue_buffer(
+    self: &mut Self,
         buffer: &mut nih_plug::buffer::Buffer,
         channel: Option<usize>,
     ) {
