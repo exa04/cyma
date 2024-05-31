@@ -19,9 +19,8 @@ pub struct HistogramBuffer {
     // together these make older values decay; the smaller decay_weight, the faster the decay
     decay_weight: f32,
     edges: Vec<f32>,
+    range: (f32, f32),
 }
-const MIN_EDGE: f32 = -96.0;
-const MAX_EDGE: f32 = 24.0;
 
 impl HistogramBuffer {
     /// Constructs a new HistogramBuffer with the given size.
@@ -41,7 +40,13 @@ impl HistogramBuffer {
             decay,
             decay_weight,
             edges: vec![f32::default(); size - 1],
+            range: (-96., 24.),
         }
+    }
+
+    pub(crate) fn set_range(&mut self, range: (f32, f32)) {
+        self.range = range;
+        self.update();
     }
 
     /// Sets the decay time of the `HistogramBuffer`.
@@ -91,12 +96,11 @@ impl HistogramBuffer {
         self.edges = (0..nr_edges)
             .map(|x| {
                 Self::db_to_linear(
-                    MIN_EDGE + x as f32 * ((MAX_EDGE - MIN_EDGE) / (nr_edges as f32 - 1.0)),
+                    self.range.0
+                        + x as f32 * ((self.range.1 - self.range.0) / (nr_edges as f32 - 1.0)),
                 )
             })
-            .collect::<Vec<_>>()
-            .try_into()
-            .unwrap();
+            .collect::<Vec<_>>();
 
         self.decay_weight = Self::decay_weight(self.decay, self.sample_rate);
     }

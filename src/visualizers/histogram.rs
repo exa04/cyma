@@ -53,10 +53,12 @@ where
     fn element(&self) -> Option<&'static str> {
         Some("histogram")
     }
-    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
         event.map(|e, _| match e {
-            HistogramEvents::UpdateRange(v) => self.range = *v,
-            // HistogramEvents::UpdateDecay(s) => self.decay = *s,
+            HistogramEvents::UpdateRange(v) => {
+                self.range = *v;
+                self.buffer.get(cx).lock().unwrap().set_range(*v)
+            } // HistogramEvents::UpdateDecay(s) => self.decay = *s,
         });
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
