@@ -140,11 +140,11 @@ impl VisualizerBuffer<f32> for HistogramBuffer {
         // don't enqueue silence
         if value > 0.0 {
             let bin_index = self.find_bin(value);
-            self.data[bin_index] += (1.0 - self.decay_weight); // Increment the count for the bin
             for i in 0..self.size - 1 {
                 // decay all values
                 self.data[i] *= self.decay_weight;
             }
+            self.data[bin_index] += (1.0 - self.decay_weight); // Increment the count for the bin
         }
     }
 
