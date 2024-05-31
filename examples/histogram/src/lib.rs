@@ -21,7 +21,7 @@ impl Default for HistogramPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            histogram_buffer: Arc::new(Mutex::new(HistogramBuffer::new(255, 10.0))),
+            histogram_buffer: Arc::new(Mutex::new(HistogramBuffer::new(255, 100.0))),
         }
     }
 }

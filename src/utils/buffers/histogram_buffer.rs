@@ -16,8 +16,8 @@ pub struct HistogramBuffer {
     decay: f32,
     // when a sample is added to a bin, add this number to that bin
     // then scale the whole vector so the max is 1
-    // together these make older values decay; the larger addition_nr, the faster the decay
-    addition_nr: f32,
+    // together these make older values decay; the smaller decay_weight, the faster the decay
+    decay_weight: f32,
     edges: Vec<f32>,
 }
 const MIN_EDGE: f32 = -96.0;
@@ -33,12 +33,13 @@ impl HistogramBuffer {
     /// calling [`set_sample_rate`](Self::set_sample_rate) inside your
     /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function.
     pub fn new(size: usize, decay: f32) -> Self {
+        let decay_weight = Self::decay_weight(decay, 48000.);
         Self {
             size,
             data: vec![f32::default(); size],
-            sample_rate: 0.,
+            sample_rate: 48000.,
             decay,
-            addition_nr: 0.,
+            decay_weight,
             edges: vec![f32::default(); size-1],
         }
     }
@@ -80,6 +81,10 @@ impl HistogramBuffer {
         self.clear();
     }
 
+    fn decay_weight(decay: f32, sample_rate: f32) -> f32 {
+        0.25f64.powf((decay as f64 / 1000. * (sample_rate as f64)).recip()) as f32
+    }
+
     fn update(self: &mut Self) {
         // calculate the linear edge values from MIN_EDGE to MAX_EDGE, evenly spaced in the db domain
         let nr_edges: usize = self.size - 1;
@@ -88,9 +93,9 @@ impl HistogramBuffer {
             .collect::<Vec<_>>()
             .try_into()
             .unwrap();
-        self.addition_nr =  self.sample_rate/(self.decay*self.size as f32*48000.0);
-    }
 
+        self.decay_weight = Self::decay_weight(self.decay, self.sample_rate);
+    }
 
     fn db_to_linear(db: f32) -> f32 {
         10.0_f32.powf(db / 20.0)
@@ -130,13 +135,11 @@ impl VisualizerBuffer<f32> for HistogramBuffer {
     /// Add an element into the HistogramBuffer.
     /// Once added, all values are scaled so the largest is 1
     fn enqueue(self: &mut Self, value: f32) {
-        // let bin_index = Self::find_bin(value);
+        let value = value.abs();
         let bin_index = self.find_bin(value);
-        self.data[bin_index] += self.addition_nr; // Increment the count for the bin
-        // scale so the largest value becomes 1.
-        let largest = self.data.iter().fold(std::f32::MIN, |a,b| a.max(*b));
+        self.data[bin_index] += (1.0-self.decay_weight); // Increment the count for the bin
         for i in 0..self.size-1 {
-            self.data[i] /= largest;
+            self.data[i] *= self.decay_weight;
         }
     }
 
