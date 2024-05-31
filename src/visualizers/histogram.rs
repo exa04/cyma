@@ -75,7 +75,8 @@ where
         let nr_bins = bins.len();
 
         let mut largest = 0.0;
-        for i in 0..nr_bins {
+        // don't scale to bins[0]
+        for i in 1..nr_bins {
             if bins[i] > largest {
                 largest = bins[i];
             }
