@@ -97,6 +97,10 @@ impl<T: Default + Copy> RingBuffer<T> {
         self.data[(self.size + self.head - 1) % self.size]
     }
 
+    pub fn tail(self: &Self) -> T {
+        self.data[(self.size + self.head) % self.size]
+    }
+
     /// Clears the entire buffer, filling it with default values (usually 0)
     pub fn clear(self: &mut Self) {
         self.data.iter_mut().for_each(|x| *x = T::default());
@@ -287,5 +291,6 @@ mod tests {
         rb.enqueue(6);
         rb.enqueue(7);
         assert_eq!(rb.peek(), 7);
+        assert_eq!(rb.tail(), 4);
     }
 }
