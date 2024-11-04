@@ -1,11 +1,11 @@
-use std::collections::VecDeque;
-use std::fmt::Pointer;
-use std::sync::Arc;
+use crate::utils::{Outlet, OutletConsumer, PeakBuffer, RingBuffer, VisualizerBuffer};
 use arc_swap::ArcSwap;
 use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::vizia::vg;
 use realfft::num_traits::float::FloatCore;
-use crate::utils::{Outlet, OutletConsumer, PeakBuffer, RingBuffer, VisualizerBuffer};
+use std::collections::VecDeque;
+use std::fmt::Pointer;
+use std::sync::Arc;
 
 // Naively downsampled graph
 pub struct TestGraph<O>
@@ -20,12 +20,12 @@ impl<O> TestGraph<O>
 where
     O: Outlet + 'static,
 {
-    pub fn new(cx: &mut Context, outlet: impl Lens<Target = O>) -> Handle<Self> {
+    pub fn new(cx: &mut Context, outlet: O) -> Handle<Self> {
         Self {
-            consumer: outlet.get(cx).get_consumer(),
+            consumer: outlet.get_consumer(),
             buffer: ArcSwap::new(PeakBuffer::new(0, 0.0, 0.0).into()),
         }
-            .build(cx, |_| {})
+        .build(cx, |_| {})
     }
 }
 
@@ -54,7 +54,10 @@ where
 
         let mut stroke = vg::Path::new();
 
-        self.consumer.receive().iter().for_each(|x| buffer.enqueue(*x));
+        self.consumer
+            .receive()
+            .iter()
+            .for_each(|x| buffer.enqueue(*x));
         let buffer = Arc::new(buffer);
         self.buffer.store(buffer.clone());
 
@@ -66,7 +69,7 @@ where
 
         let mut fill = stroke.clone();
 
-        fill.line_to(x + w, y +h);
+        fill.line_to(x + w, y + h);
         fill.line_to(x, y + h);
 
         canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));

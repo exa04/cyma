@@ -1,5 +1,6 @@
 use cyma::utils::PeakBuffer;
 use cyma::{prelude::*, utils::MonoInlet};
+use editor::Data;
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::sync::{Arc, Mutex};
@@ -8,7 +9,6 @@ mod editor;
 
 pub struct PeakGraphPlugin {
     params: Arc<DemoParams>,
-    peak_buffer: Arc<Mutex<PeakBuffer>>,
     audio_inlet: MonoInlet,
 }
 
@@ -22,7 +22,6 @@ impl Default for PeakGraphPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 10.0, 50.0))),
             audio_inlet: MonoInlet::default(),
         }
     }
@@ -67,8 +66,9 @@ impl Plugin for PeakGraphPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(self.peak_buffer.clone(), self.audio_inlet.create_outlet()),
+            editor::Data::new(),
             self.params.editor_state.clone(),
+            self.audio_inlet.create_outlet(),
         )
     }
 
@@ -78,13 +78,6 @@ impl Plugin for PeakGraphPlugin {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
-        match self.peak_buffer.lock() {
-            Ok(mut buffer) => {
-                buffer.set_sample_rate(buffer_config.sample_rate);
-            }
-            Err(_) => return false,
-        }
-
         true
     }
 
@@ -95,11 +88,6 @@ impl Plugin for PeakGraphPlugin {
         _: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         if self.params.editor_state.is_open() {
-            self.peak_buffer
-                .lock()
-                .unwrap()
-                .enqueue_buffer(buffer, None);
-
             self.audio_inlet.enqueue_buffer_summing(buffer);
         }
         ProcessStatus::Normal
