@@ -7,6 +7,7 @@ mod lissajous;
 mod meter;
 mod oscilloscope;
 mod spectrum_analyzer;
+mod test_graph;
 mod unit_ruler;
 mod waveform;
 
@@ -17,6 +18,7 @@ pub use lissajous::*;
 pub use meter::*;
 pub use oscilloscope::*;
 pub use spectrum_analyzer::*;
+pub use test_graph::*;
 pub use unit_ruler::*;
 pub use waveform::*;
 

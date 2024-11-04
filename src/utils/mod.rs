@@ -1,9 +1,11 @@
 //! Generic utility functions and structures.
 
 mod buffers;
+mod channel;
 mod spectrum;
 
 pub use buffers::*;
+pub use channel::*;
 pub use spectrum::*;
 
 use nih_plug::util::db_to_gain;
