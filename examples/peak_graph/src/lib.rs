@@ -21,7 +21,7 @@ impl Default for PeakGraphPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 10.0, 50.0))),
+            peak_buffer: Arc::new(Mutex::new(PeakBuffer::no_consumer(0.0, 10.0, 50.0))),
         }
     }
 }

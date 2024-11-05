@@ -1,7 +1,6 @@
 use super::{RingBuffer, VisualizerBuffer};
-use crate::utils::{MonoOutlet, Outlet, OutletConsumer};
+use crate::utils::OutletConsumer;
 use std::ops::{Index, IndexMut};
-use std::rc::Rc;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -24,18 +23,13 @@ pub struct PeakBuffer {
 }
 
 impl PeakBuffer {
-    pub fn new(
-        sample_rate: f32,
-        consumer: impl OutletConsumer + 'static,
-        duration: f32,
-        decay: f32,
-    ) -> Self {
+    pub fn new(consumer: impl OutletConsumer + 'static, duration: f32, decay: f32) -> Self {
         Self {
+            sample_rate: consumer.get_sample_rate(),
             consumer: Arc::new(consumer),
-            buffer: RingBuffer::<f32>::new(0),
+            buffer: RingBuffer::<f32>::new(1),
             max_acc: 0.,
             sample_delta: 0.,
-            sample_rate: sample_rate,
             duration,
             t: 0.,
             decay,
@@ -51,13 +45,11 @@ impl PeakBuffer {
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.update();
-        self.buffer.clear();
     }
 
     pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
         self.update();
-        self.buffer.clear();
     }
 
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
@@ -72,6 +64,7 @@ impl PeakBuffer {
         self.decay_weight = Self::decay_weight(self.decay, self.buffer.len(), self.duration);
         self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, self.duration);
         self.t = self.sample_delta;
+        self.buffer.clear();
     }
 }
 
@@ -81,7 +74,7 @@ impl VisualizerBuffer<f32> for PeakBuffer {
         self.t -= 1.0;
         if self.t < 0.0 {
             let last_peak = self.buffer.peek();
-            let mut peak = self.max_acc;
+            let peak = self.max_acc;
 
             // If the current peak is greater than the last one, we immediately enqueue it. If it's less than
             // the last one, we weigh the previous into the current one, analogous to how peak meters work.
@@ -147,6 +140,12 @@ impl VisualizerBuffer<f32> for PeakBuffer {
     }
 
     fn enqueue_latest(&mut self) {
+        let sample_rate = self.consumer.get_sample_rate();
+
+        if sample_rate != self.sample_rate {
+            self.set_sample_rate(sample_rate);
+        }
+
         self.consumer.receive().iter().for_each(|sample| {
             self.enqueue(*sample);
         });

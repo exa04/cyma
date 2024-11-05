@@ -76,6 +76,7 @@ impl Plugin for PeakGraphPlugin {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
+        self.audio_inlet.set_sample_rate(buffer_config.sample_rate);
         true
     }
 

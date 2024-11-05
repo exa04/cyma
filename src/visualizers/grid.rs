@@ -76,7 +76,11 @@ impl View for Grid {
         let w = bounds.w;
         let h = bounds.h;
 
-        let line_width = cx.scale_factor();
+        let line_width = if cx.border_width() > 0.0 {
+            cx.border_width() * cx.scale_factor()
+        } else {
+            cx.scale_factor()
+        };
 
         canvas.stroke_path(
             &{

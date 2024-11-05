@@ -98,9 +98,7 @@ where
                 path.move_to(x, y + h * (1. - level));
                 path.line_to(x + w, y + h * (1. - level));
 
-                let mut outline = path.clone();
-                outline.close();
-                canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
+                let outline = path.clone();
 
                 let fill_from_n = match self.fill_from {
                     FillFrom::Top => 0.0,
@@ -119,6 +117,10 @@ where
                 path.close();
 
                 canvas.fill_path(&path, &vg::Paint::color(cx.background_color().into()));
+                canvas.stroke_path(
+                    &outline,
+                    &vg::Paint::color(cx.font_color().into()).with_line_width(cx.scale_factor()),
+                );
             }
             Orientation::Horizontal => {
                 path.move_to(x + w * level, y);

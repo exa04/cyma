@@ -1,8 +1,9 @@
 use crate::utils::ring_buffer::RingBuffer;
 
-use std::ops::{Index, IndexMut};
-
 use super::VisualizerBuffer;
+use crate::utils::OutletConsumer;
+use std::ops::{Index, IndexMut};
+use std::sync::Arc;
 
 /// A special type of ring buffer for waveform analysis.
 ///
@@ -17,8 +18,9 @@ use super::VisualizerBuffer;
 /// These values can be used to construct a zoomed-out representation of the audio
 /// data without losing peak information - which is why this buffer is used in the
 /// [`Oscilloscope`](crate::editor::views::Oscilloscope).
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone)]
 pub struct WaveformBuffer {
+    consumer: Arc<dyn OutletConsumer>,
     buffer: RingBuffer<(f32, f32)>,
     // Minimum and maximum accumulators
     min_acc: f32,
@@ -33,17 +35,10 @@ pub struct WaveformBuffer {
 }
 
 impl WaveformBuffer {
-    /// Constructs a new `WaveformBuffer`
-    ///
-    /// * `size` - The length of the buffer in samples; Usually, this can be kept < 2000
-    /// * `duration` - The duration (in seconds) of the audio data inside the buffer
-    ///
-    /// The buffer needs to be provided a sample rate after initialization - do this by
-    /// calling [`set_sample_rate`](Self::set_sample_rate) inside your
-    /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function.
-    pub fn new(size: usize, duration: f32) -> Self {
+    pub fn new(consumer: impl OutletConsumer + 'static, duration: f32) -> Self {
         Self {
-            buffer: RingBuffer::<(f32, f32)>::new(size),
+            consumer: Arc::new(consumer),
+            buffer: RingBuffer::<(f32, f32)>::new(1),
             min_acc: f32::MAX,
             max_acc: f32::MIN,
             sample_delta: 0.,
@@ -53,46 +48,24 @@ impl WaveformBuffer {
         }
     }
 
-    /// Sets the sample rate of the incoming audio.
-    ///
-    /// This function **clears** the buffer. You can call it inside your
-    /// [`initialize()`](nih_plug::plugin::Plugin::initialize) function and provide the
-    /// sample rate like so:
-    ///
-    /// ```
-    /// fn initialize(
-    ///     &mut self,
-    ///     _audio_io_layout: &AudioIOLayout,
-    ///     buffer_config: &BufferConfig,
-    ///     _context: &mut impl InitContext<Self>,
-    /// ) -> bool {
-    ///     match self.waveform_buffer.lock() {
-    ///         Ok(mut buffer) => {
-    ///             buffer.set_sample_rate(buffer_config.sample_rate);
-    ///         }
-    ///         Err(_) => return false,
-    ///     }
-    ///
-    ///     true
-    /// }
-    /// ```
     pub fn set_sample_rate(self: &mut Self, sample_rate: f32) {
         self.sample_rate = sample_rate;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), sample_rate, self.duration);
-        self.buffer.clear();
+        self.update();
     }
 
-    /// Sets the duration (in seconds) of the incoming audio.
-    ///
-    /// This function **clears** the buffer.
     pub fn set_duration(self: &mut Self, duration: f32) {
         self.duration = duration;
-        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, duration);
-        self.buffer.clear();
+        self.update();
     }
 
     fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
         (sample_rate * duration) / size as f32
+    }
+
+    fn update(self: &mut Self) {
+        self.sample_delta = Self::sample_delta(self.buffer.len(), self.sample_rate, self.duration);
+        self.t = self.sample_delta;
+        self.buffer.clear();
     }
 }
 
@@ -134,6 +107,18 @@ impl VisualizerBuffer<f32> for WaveformBuffer {
         }
     }
 
+    fn enqueue_latest(&mut self) {
+        let sample_rate = self.consumer.get_sample_rate();
+
+        if sample_rate != self.sample_rate {
+            self.set_sample_rate(sample_rate);
+        }
+
+        self.consumer.receive().iter().for_each(|sample| {
+            self.enqueue(*sample);
+        });
+    }
+
     fn len(&self) -> usize {
         self.buffer.len()
     }
@@ -142,7 +127,6 @@ impl VisualizerBuffer<f32> for WaveformBuffer {
         self.buffer.clear();
     }
 
-    /// Grows the buffer, **clearing it**.
     fn grow(self: &mut Self, size: usize) {
         if size == self.buffer.len() {
             return;
@@ -152,7 +136,6 @@ impl VisualizerBuffer<f32> for WaveformBuffer {
         self.buffer.clear();
     }
 
-    /// Shrinks the buffer, **clearing it**.
     fn shrink(self: &mut Self, size: usize) {
         if size == self.buffer.len() {
             return;
