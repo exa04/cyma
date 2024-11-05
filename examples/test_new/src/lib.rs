@@ -1,6 +1,5 @@
 use cyma::utils::PeakBuffer;
 use cyma::{prelude::*, utils::MonoInlet};
-use editor::Data;
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::sync::{Arc, Mutex};
@@ -66,9 +65,8 @@ impl Plugin for PeakGraphPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(),
+            editor::Data::new(self.audio_inlet.create_outlet()),
             self.params.editor_state.clone(),
-            self.audio_inlet.create_outlet(),
         )
     }
 

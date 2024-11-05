@@ -1,5 +1,4 @@
 // TODO: Document stuff
-// TODO: Sample rate etc.
 // TODO: Provide a builder or something for the Inlet
 // TODO: Multi-Outlet - 1 input, multiple outputs
 // TODO: Stereo-In/Outlets
@@ -15,17 +14,17 @@ use std::sync::{
 
 pub struct MonoInlet {
     buffer: Arc<ArrayQueue<f32>>,
+    sample_rate: f32,
 }
 
 impl Default for MonoInlet {
     fn default() -> Self {
         Self {
             buffer: Arc::new(ArrayQueue::new(4096)),
+            sample_rate: 44_100.0,
         }
     }
 }
-
-
 
 impl MonoInlet {
     #[inline]
@@ -34,12 +33,16 @@ impl MonoInlet {
             self.buffer.force_push(x.iter_mut().map(|x| *x).sum());
         }
     }
+    pub fn set_sample_rate(&mut self, sample_rate: f32) {
+        self.sample_rate = sample_rate;
+    }
     pub fn try_send(&mut self, value: f32) {
         self.buffer.force_push(value);
     }
     pub fn create_outlet(&mut self) -> MonoOutlet {
         MonoOutlet {
             buffer: self.buffer.clone(),
+            sample_rate: self.sample_rate,
         }
     }
     /*pub fn create_multi_outlet(&mut self) -> MonoMultiOutlet {
@@ -55,20 +58,27 @@ impl MonoInlet {
 pub trait Outlet: Clone {
     type Consumer: OutletConsumer + 'static;
     fn get_consumer(self) -> Self::Consumer;
+    fn get_sample_rate(&self) -> f32;
 }
 
-pub trait OutletConsumer {
+pub trait OutletConsumer: Send + Sync {
     fn receive(&self) -> Arc<Vec<f32>>;
 }
 
 #[derive(Clone)]
 pub struct MonoOutlet {
-    buffer: Arc<ArrayQueue<f32>>
+    buffer: Arc<ArrayQueue<f32>>,
+    sample_rate: f32,
 }
 
 impl Outlet for MonoOutlet {
     type Consumer = MonoOutlet;
-    fn get_consumer(self) -> Self::Consumer { self }
+    fn get_consumer(self) -> Self::Consumer {
+        self
+    }
+    fn get_sample_rate(&self) -> f32 {
+        self.sample_rate
+    }
 }
 
 impl OutletConsumer for MonoOutlet {

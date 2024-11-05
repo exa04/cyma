@@ -87,7 +87,14 @@ where
 
         let mut stroke = vg::Path::new();
         let binding = self.buffer.get(cx);
-        let ring_buf = &(binding.lock().unwrap());
+        let ring_buf = &mut (binding.lock().unwrap());
+
+        let width_ceil = w.ceil() as usize;
+        if ring_buf.len() != width_ceil {
+            ring_buf.resize(width_ceil);
+        }
+
+        ring_buf.enqueue_latest();
 
         let mut peak = self
             .scaling

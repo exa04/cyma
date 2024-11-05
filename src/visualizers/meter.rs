@@ -83,7 +83,8 @@ where
         let h = bounds.h;
 
         let binding = self.buffer.get(cx);
-        let ring_buf = &(binding.lock().unwrap());
+        let ring_buf = &mut (binding.lock().unwrap());
+        ring_buf.enqueue_latest();
 
         let level = self.scaling.value_to_normalized(
             ring_buf[ring_buf.len() - 1],

@@ -19,7 +19,10 @@ pub trait VisualizerBuffer<T>: Index<usize> + IndexMut<usize> {
     ///
     /// Once enqueued, the value is situated at the tail of the buffer and the
     /// oldest element is removed from the head.
-    fn enqueue(self: &mut Self, value: T);
+    fn enqueue(&mut self, value: T);
+
+    /// Updates the buffer.
+    fn enqueue_latest(&mut self) {} // TODO: Remove bogus default impl (this is only here to make the compiler happy, as of now.
 
     /// Enqueues an entire [`Buffer`](`nih_plug::buffer::Buffer`), mono-summing
     /// it if no channel is specified.
@@ -30,25 +33,25 @@ pub trait VisualizerBuffer<T>: Index<usize> + IndexMut<usize> {
     );
 
     /// Clears the entire buffer, filling it with default values (usually 0)
-    fn clear(self: &mut Self);
+    fn clear(&mut self);
 
     /// Grows the buffer to the provided size.
     ///
     /// The extra space is filled with the default values for your data type
     /// (usually 0). This operation keeps the order of the values intact.
-    fn grow(self: &mut Self, size: usize);
+    fn grow(&mut self, size: usize);
 
     /// Shrinks the buffer to the provided size.
     ///
     /// The most recently enqueued elements are preserved. This operation keeps
     /// the order of the values intact.
-    fn shrink(self: &mut Self, size: usize);
+    fn shrink(&mut self, size: usize);
 
     /// Returns the length of the buffer.
-    fn len(self: &Self) -> usize;
+    fn len(&self) -> usize;
 
     /// Returns `true` if the buffer is empty.
-    fn is_empty(self: &Self) -> bool {
+    fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -56,7 +59,7 @@ pub trait VisualizerBuffer<T>: Index<usize> + IndexMut<usize> {
     ///
     /// Internally, this either calls [`shrink()`](`Buffer::shrink()`), or
     /// [`grow()`](`Buffer::grow()`), depending on the desired size.
-    fn resize(self: &mut Self, size: usize) {
+    fn resize(&mut self, size: usize) {
         if size == self.len() {
             return;
         }
