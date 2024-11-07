@@ -1,11 +1,10 @@
 use super::{RingBuffer, VisualizerBuffer};
-use crate::utils::OutletConsumer;
+use crate::utils::{MonoChannel, MonoChannelConsumer};
 use std::ops::{Index, IndexMut};
-use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct PeakBuffer {
-    consumer: Arc<dyn OutletConsumer>,
+    consumer: MonoChannelConsumer,
     buffer: RingBuffer<f32>,
     /// Maximum accumulator
     max_acc: f32,
@@ -23,10 +22,11 @@ pub struct PeakBuffer {
 }
 
 impl PeakBuffer {
-    pub fn new(consumer: impl OutletConsumer + 'static, duration: f32, decay: f32) -> Self {
+    pub fn new(channel: MonoChannel, duration: f32, decay: f32) -> Self {
+        let consumer = channel.get_consumer();
         Self {
             sample_rate: consumer.get_sample_rate(),
-            consumer: Arc::new(consumer),
+            consumer,
             buffer: RingBuffer::<f32>::new(1),
             max_acc: 0.,
             sample_delta: 0.,

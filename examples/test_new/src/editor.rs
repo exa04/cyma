@@ -1,7 +1,5 @@
 use cyma::prelude::*;
-use cyma::utils::{
-    MonoMultiOutlet, MonoOutlet, Outlet, OutletConsumer, PeakBuffer, WaveformBuffer,
-};
+use cyma::utils::{MonoChannel, PeakBuffer};
 use nih_plug::editor::Editor;
 use nih_plug_vizia::widgets::ResizeHandle;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
@@ -9,17 +7,13 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Lens, Clone)]
 pub(crate) struct Data {
-    peak_buffer: Arc<Mutex<PeakBuffer>>,
+    peak_buffer_a: Arc<Mutex<PeakBuffer>>,
 }
 
 impl Data {
-    pub(crate) fn new(outlet: MonoOutlet) -> Self {
+    pub(crate) fn new(channel: MonoChannel) -> Self {
         Self {
-            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(
-                outlet.get_consumer(),
-                10.0,
-                50.0,
-            ))),
+            peak_buffer_a: Arc::new(Mutex::new(PeakBuffer::new(channel.clone(), 10.0, 50.0))),
         }
     }
 }
@@ -63,9 +57,14 @@ fn peak_graph(cx: &mut Context) {
             .border_width(Pixels(0.5))
             .color(Color::rgb(30, 30, 30));
 
-            Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
-                .color(Color::rgba(255, 255, 255, 60))
-                .background_color(Color::rgba(255, 255, 255, 30));
+            Graph::new(
+                cx,
+                Data::peak_buffer_a,
+                (-32.0, 8.0),
+                ValueScaling::Decibels,
+            )
+            .color(Color::rgba(255, 255, 255, 60))
+            .background_color(Color::rgba(255, 255, 255, 30));
 
             UnitRuler::new(
                 cx,
@@ -87,20 +86,6 @@ fn peak_graph(cx: &mut Context) {
             .right(Pixels(8.0))
             .left(Stretch(1.0));
         });
-
-        ZStack::new(cx, |cx| {
-            Meter::new(
-                cx,
-                Data::peak_buffer,
-                (-32.0, 8.0),
-                ValueScaling::Decibels,
-                Orientation::Vertical,
-            )
-            .color(Color::rgba(255, 255, 255, 100))
-            .background_color(Color::rgba(255, 255, 255, 32));
-        })
-        .background_color(Color::rgb(8, 8, 8))
-        .width(Pixels(24.));
     })
     .background_color(Color::rgb(16, 16, 16))
     .border_width(Pixels(1.0))

@@ -1,5 +1,5 @@
 use cyma::utils::PeakBuffer;
-use cyma::{prelude::*, utils::MonoInlet};
+use cyma::{prelude::*, utils::MonoChannel};
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::sync::{Arc, Mutex};
@@ -8,7 +8,7 @@ mod editor;
 
 pub struct PeakGraphPlugin {
     params: Arc<DemoParams>,
-    audio_inlet: MonoInlet,
+    audio_inlet: MonoChannel,
 }
 
 #[derive(Params)]
@@ -21,7 +21,7 @@ impl Default for PeakGraphPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            audio_inlet: MonoInlet::default(),
+            audio_inlet: MonoChannel::default(),
         }
     }
 }
@@ -65,7 +65,7 @@ impl Plugin for PeakGraphPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(self.audio_inlet.create_outlet()),
+            editor::Data::new(self.audio_inlet.clone()),
             self.params.editor_state.clone(),
         )
     }
