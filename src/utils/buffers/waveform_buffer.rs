@@ -1,7 +1,7 @@
 use crate::utils::ring_buffer::RingBuffer;
+use crate::utils::{MonoChannel, MonoChannelConsumer};
 
 use super::VisualizerBuffer;
-use crate::utils::OutletConsumer;
 use std::ops::{Index, IndexMut};
 use std::sync::Arc;
 
@@ -20,7 +20,7 @@ use std::sync::Arc;
 /// [`Oscilloscope`](crate::editor::views::Oscilloscope).
 #[derive(Clone)]
 pub struct WaveformBuffer {
-    consumer: Arc<dyn OutletConsumer>,
+    consumer: MonoChannelConsumer,
     buffer: RingBuffer<(f32, f32)>,
     // Minimum and maximum accumulators
     min_acc: f32,
@@ -35,9 +35,10 @@ pub struct WaveformBuffer {
 }
 
 impl WaveformBuffer {
-    pub fn new(consumer: impl OutletConsumer + 'static, duration: f32) -> Self {
+    pub fn new(channel: MonoChannel, duration: f32) -> Self {
+        let consumer = channel.get_consumer();
         Self {
-            consumer: Arc::new(consumer),
+            consumer,
             buffer: RingBuffer::<(f32, f32)>::new(1),
             min_acc: f32::MAX,
             max_acc: f32::MIN,

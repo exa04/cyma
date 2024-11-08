@@ -1,5 +1,5 @@
 use cyma::prelude::*;
-use cyma::utils::{MonoChannel, PeakBuffer};
+use cyma::utils::{MonoChannel, PeakBuffer, WaveformBuffer};
 use nih_plug::editor::Editor;
 use nih_plug_vizia::widgets::ResizeHandle;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
@@ -7,13 +7,15 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Lens, Clone)]
 pub(crate) struct Data {
-    peak_buffer_a: Arc<Mutex<PeakBuffer>>,
+    peak_buffer: Arc<Mutex<PeakBuffer>>,
+    waveform_buffer: Arc<Mutex<WaveformBuffer>>,
 }
 
 impl Data {
     pub(crate) fn new(channel: MonoChannel) -> Self {
         Self {
-            peak_buffer_a: Arc::new(Mutex::new(PeakBuffer::new(channel.clone(), 10.0, 50.0))),
+            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(channel.clone(), 10.0, 50.0))),
+            waveform_buffer: Arc::new(Mutex::new(WaveformBuffer::new(channel.clone(), 10.0))),
         }
     }
 }
@@ -29,6 +31,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
         assets::register_noto_sans_light(cx);
         editor_data.clone().build(cx);
         VStack::new(cx, |cx| {
+            oscilloscope(cx);
             peak_graph(cx);
             Label::new(
                 cx,
@@ -44,6 +47,54 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
     })
 }
 
+fn oscilloscope(cx: &mut Context) {
+    ZStack::new(cx, |cx| {
+        Grid::new(
+            cx,
+            ValueScaling::Linear,
+            (-1.2, 1.2),
+            vec![-1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0],
+            Orientation::Horizontal,
+        )
+        .border_width(Pixels(0.5))
+        .color(Color::rgb(30, 30, 30));
+
+        Grid::new(
+            cx,
+            ValueScaling::Linear,
+            (-10.0, 0.0),
+            vec![-9.0, -8.0, -7.0, -6.0, -5.0, -4.0, -3.0, -2.0, -1.0],
+            Orientation::Vertical,
+        )
+        .border_width(Pixels(0.5))
+        .color(Color::rgb(30, 30, 30));
+
+        Oscilloscope::new(cx, Data::waveform_buffer, (-1.2, 1.2), ValueScaling::Linear)
+            .color(Color::rgba(255, 255, 255, 30));
+
+        UnitRuler::new(
+            cx,
+            (-1.2, 1.2),
+            ValueScaling::Linear,
+            vec![
+                (-1.0, "-1.0"),
+                (-0.5, "-0.5"),
+                (0.0, "0.0"),
+                (0.5, "0.5"),
+                (1.0, "1.0"),
+            ],
+            Orientation::Vertical,
+        )
+        .font_size(12.)
+        .color(Color::rgb(220, 220, 220))
+        .right(Pixels(8.0))
+        .left(Stretch(1.0));
+    })
+    .background_color(Color::rgb(16, 16, 16))
+    .border_width(Pixels(1.0))
+    .border_color(Color::rgb(48, 48, 48));
+}
+
 fn peak_graph(cx: &mut Context) {
     HStack::new(cx, |cx| {
         ZStack::new(cx, |cx| {
@@ -57,14 +108,9 @@ fn peak_graph(cx: &mut Context) {
             .border_width(Pixels(0.5))
             .color(Color::rgb(30, 30, 30));
 
-            Graph::new(
-                cx,
-                Data::peak_buffer_a,
-                (-32.0, 8.0),
-                ValueScaling::Decibels,
-            )
-            .color(Color::rgba(255, 255, 255, 60))
-            .background_color(Color::rgba(255, 255, 255, 30));
+            Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
+                .color(Color::rgba(255, 255, 255, 60))
+                .background_color(Color::rgba(255, 255, 255, 30));
 
             UnitRuler::new(
                 cx,
