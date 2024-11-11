@@ -1,6 +1,8 @@
 use nih_plug::buffer::Buffer;
 use std::ops::{Index, IndexMut};
 
+use crate::utils::{MonoChannel, MonoChannelConsumer};
+
 use super::{RingBuffer, VisualizerBuffer};
 
 /// Stores RMS amplitudes over time.
@@ -10,8 +12,9 @@ use super::{RingBuffer, VisualizerBuffer};
 ///
 /// It needs to be provided a sample rate after initialization - do this inside your
 /// [`initialize()`](nih_plug::plugin::Plugin::initialize)` function!
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct RMSBuffer {
+    consumer: MonoChannelConsumer,
     buffer: RingBuffer<f32>,
     /// The duration of RMS values that the buffer captures, in s (example: 10.0)
     duration: f32,
@@ -39,17 +42,18 @@ impl RMSBuffer {
     /// * `size` - The length of the buffer in samples
     /// * `duration` - The duration (in seconds) of the RMS data inside the buffer, in seconds
     /// * `rms_duration` - The duration of each RMS window, in milliseconds
-    pub fn new(size: usize, duration: f32, rms_duration: f32) -> Self {
+    pub fn new(channel: MonoChannel, duration: f32, rms_duration: f32) -> Self {
+        let consumer = channel.get_consumer();
         Self {
-            buffer: RingBuffer::<f32>::new(size),
+            sample_rate: consumer.get_sample_rate(),
+            consumer,
+            buffer: RingBuffer::<f32>::new(1),
             duration,
             rms_duration,
 
-            // These values will be needed internally.
-            sample_delta: 0.0,
             t: 0.0,
             sum_acc: 0.0,
-            sample_rate: 0.0,
+            sample_delta: 0.0,
             squared_buffer: RingBuffer::<f32>::new(0),
         }
     }
@@ -141,5 +145,17 @@ impl VisualizerBuffer<f32> for RMSBuffer {
 
     fn len(self: &Self) -> usize {
         self.buffer.len()
+    }
+
+    fn enqueue_latest(&mut self) {
+        let sample_rate = self.consumer.get_sample_rate();
+
+        if sample_rate != self.sample_rate {
+            self.set_sample_rate(sample_rate);
+        }
+
+        self.consumer.receive().iter().for_each(|sample| {
+            self.enqueue(*sample);
+        });
     }
 }
