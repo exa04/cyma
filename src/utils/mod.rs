@@ -1,11 +1,13 @@
 //! Generic utility functions and structures.
 
-mod buffers;
+pub mod accumulators;
+pub mod buffers;
 mod channel;
+mod ring_buffer;
 mod spectrum;
 
-pub use buffers::*;
 pub use channel::*;
+pub use ring_buffer::*;
 pub use spectrum::*;
 
 use nih_plug::util::db_to_gain;

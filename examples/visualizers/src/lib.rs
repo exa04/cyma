@@ -1,4 +1,3 @@
-use cyma::utils::PeakBuffer;
 use cyma::{prelude::*, utils::MonoChannel};
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
@@ -65,8 +64,9 @@ impl Plugin for VisualizersPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(self.audio_inlet.clone()),
+            editor::Data::new(),
             self.params.editor_state.clone(),
+            self.audio_inlet.clone(),
         )
     }
 

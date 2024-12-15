@@ -1,36 +1,18 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::utils::{ValueScaling, VisualizerBuffer};
-
+use crate::prelude::MonoChannel;
+use crate::utils::{accumulators::ValueAccumulator, MonoChannelConsumer, RingBuffer, ValueScaling};
+use nih_plug::prelude::AtomicF32;
 use nih_plug_vizia::vizia::{prelude::*, vg};
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
-/// Real-time graph displaying information that is stored inside a buffer
-///
-/// Use this view to construct peak graphs, loudness graphs, or any other graph that
-/// displays the data inside a [`VisualizerBuffer`].
-///
-/// # Example
-///
-/// Here's how to set up a basic peak graph. For this example, you'll need a
-/// [`PeakBuffer`](crate::utils::PeakBuffer) to store your peak information.
-///
-/// ```
-/// Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
-///     .color(Color::rgba(0, 0, 0, 160))
-///     .background_color(Color::rgba(0, 0, 0, 60));
-/// ```
-///
-/// The graph displays the range from -32.0dB to 8dB. It scales the values as
-/// decibels, and a stroke and fill (background) color is provided.
-pub struct Graph<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32> + 'static,
-{
-    buffer: L,
+pub struct Graph<A: ValueAccumulator + 'static> {
+    consumer: Arc<Mutex<MonoChannelConsumer>>,
+    buffer: Arc<Mutex<RingBuffer<f32>>>,
     range: (f32, f32),
     scaling: ValueScaling,
     fill_from: FillFrom,
+    accumulator: Arc<Mutex<A>>,
 }
 
 enum GraphEvents {
@@ -38,22 +20,24 @@ enum GraphEvents {
     UpdateScaling(ValueScaling),
 }
 
-impl<L, I> Graph<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
+impl<A: ValueAccumulator + 'static> Graph<A> {
     pub fn new(
         cx: &mut Context,
-        buffer: L,
+        mut accumulator: A,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
+        channel: MonoChannel,
     ) -> Handle<Self> {
+        let consumer = channel.get_consumer();
+        accumulator.set_sample_rate(consumer.get_sample_rate());
+
         Self {
-            buffer,
+            consumer: Arc::new(Mutex::new(consumer)),
+            buffer: Default::default(),
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
             fill_from: FillFrom::Bottom,
+            accumulator: Arc::new(Mutex::new(accumulator)),
         }
         .build(cx, |_| {})
         .range(range)
@@ -61,11 +45,7 @@ where
     }
 }
 
-impl<L, I> View for Graph<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
+impl<A: ValueAccumulator + 'static> View for Graph<A> {
     fn element(&self) -> Option<&'static str> {
         Some("graph")
     }
@@ -85,20 +65,35 @@ where
 
         let line_width = cx.scale_factor();
 
-        let mut stroke = vg::Path::new();
-        let binding = self.buffer.get(cx);
-        let ring_buf = &mut (binding.lock().unwrap());
+        // Update buffer
 
-        let width_ceil = w.ceil() as usize;
-        if ring_buf.len() != width_ceil {
-            ring_buf.resize(width_ceil);
+        let ring_buf = &mut (self.buffer.lock().unwrap());
+
+        {
+            let mut acc = self.accumulator.lock().unwrap();
+
+            let width_ceil = w.ceil() as usize;
+            if ring_buf.len() != width_ceil {
+                ring_buf.resize(width_ceil);
+                acc.set_size(width_ceil);
+            }
+
+            let mut consumer = self.consumer.lock().unwrap();
+
+            while let Some(sample) = consumer.receive() {
+                if let Some(sample) = acc.accumulate(sample) {
+                    ring_buf.enqueue(sample);
+                }
+            }
         }
-
-        ring_buf.enqueue_latest();
 
         let mut peak = self
             .scaling
             .value_to_normalized(ring_buf[0], self.range.0, self.range.1);
+
+        // Draw
+
+        let mut stroke = vg::Path::new();
 
         stroke.move_to(x, y + h * (1. - peak));
 
@@ -109,10 +104,7 @@ where
                 .value_to_normalized(ring_buf[i], self.range.0, self.range.1);
 
             // Draw peak as a new point
-            stroke.line_to(
-                x + (w / ring_buf.len() as f32) * i as f32,
-                y + h * (1. - peak),
-            );
+            stroke.line_to(x + i as f32, y + h * (1. - peak));
         }
 
         let mut fill = stroke.clone();
@@ -137,11 +129,7 @@ where
     }
 }
 
-impl<'a, L, I> FillModifiers for Handle<'a, Graph<L, I>>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
+impl<'a, A: ValueAccumulator + 'static> FillModifiers for Handle<'a, Graph<A>> {
     /// Allows for the graph to be filled from the top instead of the bottom.
     ///
     /// This is useful for certain graphs like gain reduction meters.
@@ -186,11 +174,7 @@ where
     }
 }
 
-impl<'a, L, I> RangeModifiers for Handle<'a, Graph<L, I>>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
+impl<'a, A: ValueAccumulator + 'static> RangeModifiers for Handle<'a, Graph<A>> {
     fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
         let e = self.entity();
 

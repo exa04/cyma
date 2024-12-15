@@ -69,6 +69,14 @@ impl PeakBuffer {
 }
 
 impl VisualizerBuffer<f32> for PeakBuffer {
+    fn inner_buffer(&mut self) -> &mut RingBuffer<f32> {
+        &mut self.buffer
+    }
+
+    fn consumer(&mut self) -> &mut MonoChannelConsumer {
+        &mut self.consumer
+    }
+
     fn enqueue(self: &mut Self, value: f32) {
         let value = value.abs();
         self.t -= 1.0;
@@ -90,77 +98,5 @@ impl VisualizerBuffer<f32> for PeakBuffer {
         if value > self.max_acc {
             self.max_acc = value
         }
-    }
-
-    fn enqueue_buffer(
-        self: &mut Self,
-        buffer: &mut nih_plug::buffer::Buffer,
-        channel: Option<usize>,
-    ) {
-        match channel {
-            Some(channel) => {
-                for sample in buffer.as_slice()[channel].into_iter() {
-                    self.enqueue(*sample);
-                }
-            }
-            None => {
-                for sample in buffer.iter_samples() {
-                    self.enqueue(
-                        (1. / (&sample).len() as f32) * sample.into_iter().map(|x| *x).sum::<f32>(),
-                    );
-                }
-            }
-        }
-    }
-
-    fn len(&self) -> usize {
-        self.buffer.len()
-    }
-
-    fn clear(self: &mut Self) {
-        self.buffer.clear();
-    }
-
-    fn grow(self: &mut Self, size: usize) {
-        if self.buffer.len() == size {
-            return;
-        };
-        self.buffer.grow(size);
-        self.update();
-        self.buffer.clear();
-    }
-
-    fn shrink(self: &mut Self, size: usize) {
-        if self.buffer.len() == size {
-            return;
-        };
-        self.buffer.shrink(size);
-        self.update();
-        self.buffer.clear();
-    }
-
-    fn enqueue_latest(&mut self) {
-        let sample_rate = self.consumer.get_sample_rate();
-
-        if sample_rate != self.sample_rate {
-            self.set_sample_rate(sample_rate);
-        }
-
-        self.consumer.receive().iter().for_each(|sample| {
-            self.enqueue(*sample);
-        });
-    }
-}
-
-impl Index<usize> for PeakBuffer {
-    type Output = f32;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        self.buffer.index(index)
-    }
-}
-impl IndexMut<usize> for PeakBuffer {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        self.buffer.index_mut(index)
     }
 }

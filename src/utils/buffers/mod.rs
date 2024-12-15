@@ -1,49 +1,51 @@
 pub mod peak_buffer;
-pub mod ring_buffer;
 
 use std::ops::{Index, IndexMut};
 
+pub use crate::utils::ring_buffer::RingBuffer;
+use crate::utils::MonoChannelConsumer;
 pub use peak_buffer::PeakBuffer;
-pub use ring_buffer::RingBuffer;
 
-pub trait VisualizerBuffer<T>: Index<usize> + IndexMut<usize> {
-    /// Enqueues an element.
-    ///
-    /// Once enqueued, the value is situated at the tail of the buffer and the
-    /// oldest element is removed from the head.
-    fn enqueue(&mut self, value: T);
+/// Common trait for buffers used by visualizers.
+pub trait VisualizerBuffer<T: Default + Copy> {
+    fn inner_buffer(&mut self) -> &mut RingBuffer<T>;
 
-    /// Updates the buffer.
-    fn enqueue_latest(&mut self) {} // TODO: Remove bogus default impl (this is only here to make the compiler happy, as of now.
+    fn consumer(&mut self) -> &mut MonoChannelConsumer;
 
-    /// Enqueues an entire [`Buffer`](`nih_plug::buffer::Buffer`), mono-summing
-    /// it if no channel is specified.
-    fn enqueue_buffer(
-        self: &mut Self,
-        buffer: &mut nih_plug::buffer::Buffer,
-        channel: Option<usize>,
-    );
+    fn enqueue(&mut self, value: f32);
 
     /// Clears the entire buffer, filling it with default values (usually 0)
-    fn clear(&mut self);
+    fn clear(&mut self) {
+        self.inner_buffer().clear();
+    }
 
     /// Grows the buffer to the provided size.
     ///
     /// The extra space is filled with the default values for your data type
     /// (usually 0). This operation keeps the order of the values intact.
-    fn grow(&mut self, size: usize);
+    #[inline]
+    fn grow(&mut self, size: usize) {
+        self.inner_buffer().grow(size);
+    }
 
     /// Shrinks the buffer to the provided size.
     ///
     /// The most recently enqueued elements are preserved. This operation keeps
     /// the order of the values intact.
-    fn shrink(&mut self, size: usize);
+    #[inline]
+    fn shrink(&mut self, size: usize) {
+        self.inner_buffer().shrink(size);
+    }
 
     /// Returns the length of the buffer.
-    fn len(&self) -> usize;
+    #[inline]
+    fn len(&mut self) -> usize {
+        self.inner_buffer().len()
+    }
 
     /// Returns `true` if the buffer is empty.
-    fn is_empty(&self) -> bool {
+    #[inline]
+    fn is_empty(&mut self) -> bool {
         self.len() == 0
     }
 
@@ -51,15 +53,26 @@ pub trait VisualizerBuffer<T>: Index<usize> + IndexMut<usize> {
     ///
     /// Internally, this either calls [`shrink()`](`Buffer::shrink()`), or
     /// [`grow()`](`Buffer::grow()`), depending on the desired size.
+    #[inline]
     fn resize(&mut self, size: usize) {
-        if size == self.len() {
-            return;
+        self.inner_buffer().resize(size);
+    }
+}
+
+/// Common trait for buffers used by the graph.
+pub trait GraphBuffer: VisualizerBuffer<f32> {
+    fn sample_rate(&self) -> f32;
+    fn set_sample_rate(&mut self, sample_rate: f32);
+    /// Updates the buffer.
+    fn enqueue_latest(&mut self) {
+        let sample_rate = self.consumer().get_sample_rate();
+
+        if sample_rate != self.sample_rate() {
+            self.set_sample_rate(sample_rate);
         }
-        if size < self.len() {
-            self.shrink(size)
-        }
-        if size > self.len() {
-            self.grow(size)
+
+        while let Some(sample) = self.consumer().receive() {
+            self.enqueue(sample);
         }
     }
 }

@@ -69,12 +69,8 @@ pub struct MonoChannelConsumer {
 
 impl MonoChannelConsumer {
     #[inline]
-    pub fn receive(&mut self) -> Vec<f32> {
-        let mut new_block = Vec::new();
-        while let Some(x) = self.receiver.recv() {
-            new_block.push(x);
-        }
-        new_block
+    pub fn receive(&mut self) -> Option<f32> {
+        self.receiver.recv()
     }
 
     pub fn get_sample_rate(&self) -> f32 {
