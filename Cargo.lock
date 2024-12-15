@@ -1800,15 +1800,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
-name = "histogram"
-version = "0.1.0"
-dependencies = [
- "cyma",
- "nih_plug",
- "nih_plug_vizia",
-]
-
-[[package]]
 name = "iana-time-zone"
 version = "0.1.61"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2712,15 +2703,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
-name = "peak_graph"
-version = "0.1.0"
-dependencies = [
- "cyma",
- "nih_plug",
- "nih_plug_vizia",
-]
-
-[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3567,15 +3549,6 @@ checksum = "4f599bd7ca042cfdf8f4512b277c02ba102247820f9d9d4a9f521f496751a6ef"
 dependencies = [
  "rustix 0.38.38",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "test_new"
-version = "0.1.0"
-dependencies = [
- "cyma",
- "nih_plug",
- "nih_plug_vizia",
 ]
 
 [[package]]

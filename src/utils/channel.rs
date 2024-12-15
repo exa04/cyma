@@ -16,6 +16,15 @@ pub struct MonoChannel {
     sample_rate: Arc<AtomicF32>,
 }
 
+impl MonoChannel {
+    pub fn new(size: usize) -> MonoChannel {
+        Self {
+            sender: Sender::<f32>::new(size),
+            sample_rate: Default::default(),
+        }
+    }
+}
+
 impl Default for MonoChannel {
     fn default() -> MonoChannel {
         MonoChannel {

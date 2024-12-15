@@ -2,12 +2,11 @@
 //! use to make rich [nih-plug](https://github.com/robbert-vdh/nih-plug) plug-in UIs
 //! with ease.
 
-pub mod controls;
 pub mod utils;
 pub mod visualizers;
 
 pub mod prelude {
-    pub use crate::controls::*;
+    pub use crate::utils::MonoChannel;
     pub use crate::utils::ValueScaling;
     pub use crate::utils::VisualizerBuffer;
     pub use crate::visualizers::*;

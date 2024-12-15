@@ -1,6 +1,6 @@
 use nih_plug::prelude::*;
-use visualizers::VisualizersDemo;
+use visualizers::VisualizersPlugin;
 
 fn main() {
-    nih_export_standalone::<VisualizersDemo>();
+    nih_export_standalone::<VisualizersPlugin>();
 }
