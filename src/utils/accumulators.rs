@@ -1,12 +1,9 @@
 use crate::utils::RingBuffer;
 
 pub trait Accumulator {
-    #[inline]
     fn accumulate(&mut self, sample: f32) -> Option<f32>;
     fn prev(&self) -> f32;
-    #[inline]
     fn set_sample_rate(&mut self, sample_rate: f32);
-    #[inline]
     fn set_size(&mut self, size: usize);
 }
 
@@ -59,6 +56,7 @@ impl PeakAccumulator {
 }
 
 impl Accumulator for PeakAccumulator {
+    #[inline]
     fn accumulate(&mut self, sample: f32) -> Option<f32> {
         self.max_acc = self.max_acc.max(sample.abs());
         self.t += 1.0;
@@ -83,15 +81,18 @@ impl Accumulator for PeakAccumulator {
         }
     }
 
+    #[inline]
     fn prev(&self) -> f32 {
         self.prev
     }
 
+    #[inline]
     fn set_sample_rate(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.update();
     }
 
+    #[inline]
     fn set_size(&mut self, size: usize) {
         self.size = size;
         self.update();
@@ -137,6 +138,7 @@ impl MinimumAccumulator {
 }
 
 impl Accumulator for MinimumAccumulator {
+    #[inline]
     fn accumulate(&mut self, sample: f32) -> Option<f32> {
         self.min_acc = self.min_acc.min(sample.abs());
         self.t += 1.0;
@@ -161,15 +163,18 @@ impl Accumulator for MinimumAccumulator {
         }
     }
 
+    #[inline]
     fn prev(&self) -> f32 {
         self.prev
     }
 
+    #[inline]
     fn set_sample_rate(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.update();
     }
 
+    #[inline]
     fn set_size(&mut self, size: usize) {
         self.size = size;
         self.update();
@@ -215,6 +220,7 @@ impl RMSAccumulator {
 }
 
 impl Accumulator for RMSAccumulator {
+    #[inline]
     fn accumulate(&mut self, sample: f32) -> Option<f32> {
         let squared_value = sample * sample;
 
@@ -238,15 +244,18 @@ impl Accumulator for RMSAccumulator {
         }
     }
 
+    #[inline]
     fn prev(&self) -> f32 {
         self.prev
     }
 
+    #[inline]
     fn set_sample_rate(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.update();
     }
 
+    #[inline]
     fn set_size(&mut self, size: usize) {
         self.size = size;
         self.update();
