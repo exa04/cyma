@@ -1,5 +1,4 @@
 use cyma::prelude::*;
-use cyma::utils::accumulators::{PeakAccumulator, RMSAccumulator};
 use cyma::utils::MonoChannel;
 use nih_plug::editor::Editor;
 use nih_plug_vizia::widgets::ResizeHandle;
@@ -42,9 +41,10 @@ pub(crate) fn create(
                     .border_width(Pixels(0.5))
                     .color(Color::rgb(30, 30, 30));
 
-                    Graph::new(
+                    Graph::peak(
                         cx,
-                        PeakAccumulator::new(10.0, 50.0),
+                        10.0,
+                        50.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
                         channel.clone(),
@@ -52,9 +52,10 @@ pub(crate) fn create(
                     .color(Color::rgba(255, 255, 255, 60))
                     .background_color(Color::rgba(255, 255, 255, 30));
 
-                    Graph::new(
+                    Graph::rms(
                         cx,
-                        RMSAccumulator::new(10.0, 250.0),
+                        10.0,
+                        250.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
                         channel.clone(),
@@ -81,6 +82,37 @@ pub(crate) fn create(
                     .right(Pixels(8.0))
                     .left(Stretch(1.0));
                 });
+                ZStack::new(cx, |cx| {
+                    Meter::rms(
+                        cx,
+                        800.0,
+                        (-32.0, 8.0),
+                        ValueScaling::Decibels,
+                        Orientation::Vertical,
+                        channel.clone(),
+                    )
+                    .background_color(Color::rgba(64, 128, 255, 50));
+                    Meter::peak(
+                        cx,
+                        160.0,
+                        (-32.0, 8.0),
+                        ValueScaling::Decibels,
+                        Orientation::Vertical,
+                        channel.clone(),
+                    )
+                    .background_color(Color::rgba(255, 255, 255, 30));
+                    Meter::peak(
+                        cx,
+                        500.0,
+                        (-32.0, 8.0),
+                        ValueScaling::Decibels,
+                        Orientation::Vertical,
+                        channel.clone(),
+                    )
+                    .color(Color::rgba(255, 255, 255, 120));
+                })
+                .background_color(Color::rgb(8, 8, 8))
+                .width(Pixels(24.0));
             })
             .background_color(Color::rgb(16, 16, 16))
             .border_width(Pixels(1.0))

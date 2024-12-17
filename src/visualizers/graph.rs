@@ -1,12 +1,11 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::prelude::MonoChannel;
-use crate::utils::{accumulators::ValueAccumulator, MonoChannelConsumer, RingBuffer, ValueScaling};
-use nih_plug::prelude::AtomicF32;
+use crate::utils::accumulators::{MinimumAccumulator, PeakAccumulator, RMSAccumulator};
+use crate::utils::{accumulators::Accumulator, MonoChannelConsumer, RingBuffer, ValueScaling};
 use nih_plug_vizia::vizia::{prelude::*, vg};
-use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 
-pub struct Graph<A: ValueAccumulator + 'static> {
+pub struct Graph<A: Accumulator + 'static> {
     consumer: Arc<Mutex<MonoChannelConsumer>>,
     buffer: Arc<Mutex<RingBuffer<f32>>>,
     range: (f32, f32),
@@ -20,8 +19,8 @@ enum GraphEvents {
     UpdateScaling(ValueScaling),
 }
 
-impl<A: ValueAccumulator + 'static> Graph<A> {
-    pub fn new(
+impl<A: Accumulator + 'static> Graph<A> {
+    pub fn with_accumulator(
         cx: &mut Context,
         mut accumulator: A,
         range: impl Res<(f32, f32)> + Clone,
@@ -44,8 +43,7 @@ impl<A: ValueAccumulator + 'static> Graph<A> {
         .scaling(scaling)
     }
 }
-
-impl<A: ValueAccumulator + 'static> View for Graph<A> {
+impl<A: Accumulator + 'static> View for Graph<A> {
     fn element(&self) -> Option<&'static str> {
         Some("graph")
     }
@@ -129,7 +127,7 @@ impl<A: ValueAccumulator + 'static> View for Graph<A> {
     }
 }
 
-impl<'a, A: ValueAccumulator + 'static> FillModifiers for Handle<'a, Graph<A>> {
+impl<'a, A: Accumulator + 'static> FillModifiers for Handle<'a, Graph<A>> {
     /// Allows for the graph to be filled from the top instead of the bottom.
     ///
     /// This is useful for certain graphs like gain reduction meters.
@@ -174,7 +172,7 @@ impl<'a, A: ValueAccumulator + 'static> FillModifiers for Handle<'a, Graph<A>> {
     }
 }
 
-impl<'a, A: ValueAccumulator + 'static> RangeModifiers for Handle<'a, Graph<A>> {
+impl<'a, A: Accumulator + 'static> RangeModifiers for Handle<'a, Graph<A>> {
     fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
         let e = self.entity();
 
@@ -192,5 +190,60 @@ impl<'a, A: ValueAccumulator + 'static> RangeModifiers for Handle<'a, Graph<A>> 
         });
 
         self
+    }
+}
+
+impl Graph<PeakAccumulator> {
+    pub fn peak(
+        cx: &mut Context,
+        duration: f32,
+        decay: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+        channel: MonoChannel,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            PeakAccumulator::new(duration, decay),
+            range,
+            scaling,
+            channel,
+        )
+    }
+}
+impl Graph<MinimumAccumulator> {
+    pub fn minima(
+        cx: &mut Context,
+        duration: f32,
+        decay: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+        channel: MonoChannel,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            MinimumAccumulator::new(duration, decay),
+            range,
+            scaling,
+            channel,
+        )
+    }
+}
+impl Graph<RMSAccumulator> {
+    pub fn rms(
+        cx: &mut Context,
+        duration: f32,
+        window_size: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+        channel: MonoChannel,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            RMSAccumulator::new(duration, window_size),
+            range,
+            scaling,
+            channel,
+        )
     }
 }

@@ -1,8 +1,9 @@
 use crate::utils::RingBuffer;
 
-pub trait ValueAccumulator {
+pub trait Accumulator {
     #[inline]
     fn accumulate(&mut self, sample: f32) -> Option<f32>;
+    fn prev(&self) -> f32;
     #[inline]
     fn set_sample_rate(&mut self, sample_rate: f32);
     #[inline]
@@ -57,7 +58,7 @@ impl PeakAccumulator {
     }
 }
 
-impl ValueAccumulator for PeakAccumulator {
+impl Accumulator for PeakAccumulator {
     fn accumulate(&mut self, sample: f32) -> Option<f32> {
         self.max_acc = self.max_acc.max(sample.abs());
         self.t += 1.0;
@@ -80,6 +81,10 @@ impl ValueAccumulator for PeakAccumulator {
         } else {
             None
         }
+    }
+
+    fn prev(&self) -> f32 {
+        self.prev
     }
 
     fn set_sample_rate(&mut self, sample_rate: f32) {
@@ -131,7 +136,7 @@ impl MinimumAccumulator {
     }
 }
 
-impl ValueAccumulator for MinimumAccumulator {
+impl Accumulator for MinimumAccumulator {
     fn accumulate(&mut self, sample: f32) -> Option<f32> {
         self.min_acc = self.min_acc.min(sample.abs());
         self.t += 1.0;
@@ -156,6 +161,10 @@ impl ValueAccumulator for MinimumAccumulator {
         }
     }
 
+    fn prev(&self) -> f32 {
+        self.prev
+    }
+
     fn set_sample_rate(&mut self, sample_rate: f32) {
         self.sample_rate = sample_rate;
         self.update();
@@ -170,6 +179,7 @@ impl ValueAccumulator for MinimumAccumulator {
 pub struct RMSAccumulator {
     duration: f32,
     rms_window: f32,
+    prev: f32,
 
     size: usize,
     sample_rate: f32,
@@ -184,6 +194,7 @@ impl RMSAccumulator {
         Self {
             duration,
             rms_window,
+            prev: 0.0,
 
             size: 1,
             sample_delta: 0.0,
@@ -203,7 +214,7 @@ impl RMSAccumulator {
     }
 }
 
-impl ValueAccumulator for RMSAccumulator {
+impl Accumulator for RMSAccumulator {
     fn accumulate(&mut self, sample: f32) -> Option<f32> {
         let squared_value = sample * sample;
 
@@ -217,10 +228,18 @@ impl ValueAccumulator for RMSAccumulator {
             let rms = (self.sum_acc / self.squared_buffer.len() as f32).sqrt();
             self.t += self.sample_delta;
 
-            Some(if rms.is_nan() { 0.0 } else { rms })
+            let value = if rms.is_nan() { 0.0 } else { rms };
+
+            self.prev = value;
+
+            Some(value)
         } else {
             None
         }
+    }
+
+    fn prev(&self) -> f32 {
+        self.prev
     }
 
     fn set_sample_rate(&mut self, sample_rate: f32) {
