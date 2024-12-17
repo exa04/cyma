@@ -3,7 +3,7 @@ use cyma::utils::MonoChannel;
 use nih_plug::editor::Editor;
 use nih_plug_vizia::widgets::ResizeHandle;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(Lens, Clone)]
 pub(crate) struct Data {}

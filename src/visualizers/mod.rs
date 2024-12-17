@@ -1,12 +1,16 @@
 //! Views which visualize the audio running through your plug-in.
 
 mod graph;
+mod meter;
+
 mod grid;
 mod spectrum_analyzer;
 mod unit_ruler;
 mod waveform;
 
 pub use graph::*;
+pub use meter::*;
+
 pub use grid::*;
 pub use spectrum_analyzer::*;
 pub use unit_ruler::*;
