@@ -117,6 +117,15 @@ pub(crate) fn create(
             .background_color(Color::rgb(16, 16, 16))
             .border_width(Pixels(1.0))
             .border_color(Color::rgb(48, 48, 48));
+
+            HStack::new(cx, |cx| {
+                Oscilloscope::new(cx, 10.0, (-1.0, 1.0), ValueScaling::Linear, channel.clone())
+                    .color(Color::rgba(255, 255, 255, 120));
+            })
+            .background_color(Color::rgb(16, 16, 16))
+            .border_width(Pixels(1.0))
+            .border_color(Color::rgb(48, 48, 48));
+
             Label::new(
                 cx,
                 format!("Cyma {} - Visualizers Example", env!("CARGO_PKG_VERSION")).as_str(),

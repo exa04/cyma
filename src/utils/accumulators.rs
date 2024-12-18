@@ -8,7 +8,7 @@ pub trait Accumulator {
 }
 
 #[inline]
-fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
+pub fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
     ((sample_rate as f64 * duration as f64) / size as f64) as f32
 }
 
