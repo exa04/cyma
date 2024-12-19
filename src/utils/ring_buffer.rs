@@ -8,7 +8,7 @@ use std::ops::{Index, IndexMut};
 /// oldest element is popped off the head of the buffer. Due to its fixed-size
 /// nature, the ring buffer is very fast and doesn't dynamically reallocate
 /// itself, or move any elements around when an element is added.
-#[derive(Clone, PartialEq, Eq, Default, Hash, Debug)]
+#[derive(Clone, Default, PartialEq, Eq, Hash, Debug)]
 pub struct RingBuffer<T> {
     head: usize,
     size: usize,

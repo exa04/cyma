@@ -2,7 +2,7 @@
 name = "visualizers"
 version = "0.1.0"
 edition = "2021"
-description = "An example plug-in showcasing all Cyma visualizers"
+description = "Visualizers built using Cyma"
 
 [lib]
 crate-type = ["cdylib", "lib"]

@@ -41,10 +41,8 @@ impl UnitRuler {
             let normalized_values = values
                 .into_iter()
                 .filter_map(|v| {
-                    // Normalize the value according to the provided scaling, within the provided range
                     scaling
                         .value_to_normalized_optional(v.0, range.0, range.1)
-                        // If it is not in range, discard it by returning a `None`, which filter_map filters out
                         .map(|value| (value, v.1))
                 })
                 .collect::<Vec<(f32, &'static str)>>();
@@ -54,6 +52,8 @@ impl UnitRuler {
                         Orientation::Vertical => {
                             Label::new(cx, value.1)
                                 .top(Percentage(100. - value.0 * 100.))
+                                .width(Stretch(1.0))
+                                .text_align(TextAlign::Right)
                                 .transform(Transform::TranslateY(LengthOrPercentage::Percentage(
                                     -50.,
                                 )));

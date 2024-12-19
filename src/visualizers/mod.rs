@@ -1,20 +1,18 @@
 //! Views which visualize the audio running through your plug-in.
 
 mod graph;
-mod grid;
-mod histogram;
-mod lissajous;
 mod meter;
+
+mod grid;
 mod oscilloscope;
 mod spectrum_analyzer;
 mod unit_ruler;
 mod waveform;
 
 pub use graph::*;
-pub use grid::*;
-pub use histogram::*;
-pub use lissajous::*;
 pub use meter::*;
+
+pub use grid::*;
 pub use oscilloscope::*;
 pub use spectrum_analyzer::*;
 pub use unit_ruler::*;
