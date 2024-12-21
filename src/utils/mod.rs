@@ -25,12 +25,6 @@ pub enum ValueScaling {
 
 impl ValueScaling {
     pub fn normalized_to_value(&self, normalized: f32, min: f32, max: f32) -> f32 {
-        if normalized <= 0.0 {
-            return min;
-        } else if normalized >= 1.0 {
-            return max;
-        }
-
         let map = |x: f32| -> f32 { (x * (max - min)) + min };
 
         match self {
@@ -44,7 +38,7 @@ impl ValueScaling {
                 2.0f32.powf((normalized * range) + minl)
             }
 
-            ValueScaling::Decibels => map(db_to_gain(normalized)),
+            ValueScaling::Decibels => db_to_gain(normalized),
         }
     }
 

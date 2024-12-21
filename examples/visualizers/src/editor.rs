@@ -40,7 +40,6 @@ pub(crate) fn create(
                     )
                     .border_width(Pixels(0.5))
                     .color(Color::rgb(30, 30, 30));
-
                     Graph::peak(
                         cx,
                         10.0,
@@ -51,7 +50,6 @@ pub(crate) fn create(
                     )
                     .color(Color::rgba(255, 255, 255, 60))
                     .background_color(Color::rgba(255, 255, 255, 30));
-
                     Graph::rms(
                         cx,
                         10.0,
@@ -60,8 +58,17 @@ pub(crate) fn create(
                         ValueScaling::Decibels,
                         channel.clone(),
                     )
-                    .color(Color::rgba(64, 128, 255, 128));
-
+                    .color(Color::rgba(255, 92, 92, 128));
+                    Histogram::new(
+                        cx,
+                        250.0,
+                        (-32.0, 8.0),
+                        ValueScaling::Decibels,
+                        channel.clone(),
+                    )
+                    .width(Pixels(200.0))
+                    .color(Color::rgba(64, 128, 255, 128))
+                    .background_color(Color::rgba(64, 128, 255, 20));
                     UnitRuler::new(
                         cx,
                         (-32.0, 8.0),
@@ -91,10 +98,10 @@ pub(crate) fn create(
                         Orientation::Vertical,
                         channel.clone(),
                     )
-                    .background_color(Color::rgba(64, 128, 255, 50));
+                    .background_color(Color::rgba(255, 92, 92, 50));
                     Meter::peak(
                         cx,
-                        160.0,
+                        400.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
                         Orientation::Vertical,
@@ -103,7 +110,7 @@ pub(crate) fn create(
                     .background_color(Color::rgba(255, 255, 255, 30));
                     Meter::peak(
                         cx,
-                        500.0,
+                        800.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
                         Orientation::Vertical,

@@ -4,15 +4,16 @@ mod graph;
 mod meter;
 
 mod grid;
+mod histogram;
 mod oscilloscope;
 mod spectrum_analyzer;
 mod unit_ruler;
 mod waveform;
 
 pub use graph::*;
-pub use meter::*;
-
 pub use grid::*;
+pub use histogram::*;
+pub use meter::*;
 pub use oscilloscope::*;
 pub use spectrum_analyzer::*;
 pub use unit_ruler::*;

@@ -13,7 +13,7 @@ pub fn sample_delta(size: usize, sample_rate: f32, duration: f32) -> f32 {
 }
 
 #[inline]
-fn decay_weight(decay: f32, size: usize, duration: f32) -> f32 {
+pub fn decay_weight(decay: f32, size: usize, duration: f32) -> f32 {
     0.25f64.powf((decay as f64 / 1000. * (size as f64 / duration as f64)).recip()) as f32
 }
 
