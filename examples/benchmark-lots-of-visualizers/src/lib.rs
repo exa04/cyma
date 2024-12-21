@@ -34,7 +34,7 @@ impl Default for DemoParams {
 }
 
 impl Plugin for VisualizersPlugin {
-    const NAME: &'static str = "Cyma Visualizers Example";
+    const NAME: &'static str = "Lots of Visualizers";
     const VENDOR: &'static str = "223230";
     const URL: &'static str = env!("CARGO_PKG_HOMEPAGE");
     const EMAIL: &'static str = "223230@pm.me";
@@ -95,7 +95,7 @@ impl Plugin for VisualizersPlugin {
 
 impl ClapPlugin for VisualizersPlugin {
     const CLAP_ID: &'static str = "org.cyma.visualizers";
-    const CLAP_DESCRIPTION: Option<&'static str> = Some("A lot of visualizers built using Cyma");
+    const CLAP_DESCRIPTION: Option<&'static str> = Some("A huge load of visualizers");
     const CLAP_MANUAL_URL: Option<&'static str> = Some(Self::URL);
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
 
@@ -104,7 +104,7 @@ impl ClapPlugin for VisualizersPlugin {
 }
 
 impl Vst3Plugin for VisualizersPlugin {
-    const VST3_CLASS_ID: [u8; 16] = *b"Cyma_Visualizers";
+    const VST3_CLASS_ID: [u8; 16] = *b"Cyma_LotsOfVisua";
 
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] = &[Vst3SubCategory::Analyzer];
 }

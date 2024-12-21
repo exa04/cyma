@@ -565,6 +565,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "benchmark-lots-of-visualizers"
+version = "0.1.0"
+dependencies = [
+ "cyma",
+ "nih_plug",
+ "nih_plug_vizia",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.70.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
