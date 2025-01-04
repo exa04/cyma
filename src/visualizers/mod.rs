@@ -2,7 +2,7 @@
 
 mod graph;
 mod grid;
-// mod histogram;
+mod histogram;
 mod meter;
 mod oscilloscope;
 mod spectrum_analyzer;
@@ -11,7 +11,7 @@ mod waveform;
 
 pub use graph::*;
 pub use grid::*;
-// pub use histogram::*;
+pub use histogram::*;
 pub use meter::*;
 pub use oscilloscope::*;
 pub use spectrum_analyzer::*;

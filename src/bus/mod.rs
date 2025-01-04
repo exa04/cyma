@@ -11,7 +11,7 @@ pub use multichannel::*;
 pub type StereoBus = MultiChannelBus<2>;
 
 pub trait Bus<T: Clone + Copy + Sized + 'static>: Clone {
-    type I<'a>: Iterator<Item = &'a T>;
+    type I<'a>: ExactSizeIterator<Item = &'a T>;
     type O<'a>: Iterator;
 
     fn set_sample_rate(&self, sample_rate: f32);

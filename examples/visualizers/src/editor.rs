@@ -56,16 +56,10 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                         ValueScaling::Decibels,
                     )
                     .color(Color::rgba(255, 92, 92, 128));
-                    // Histogram::new(
-                    //     cx,
-                    //     250.0,
-                    //     (-32.0, 8.0),
-                    //     ValueScaling::Decibels,
-                    //     Data::bus,
-                    // )
-                    // .width(Pixels(200.0))
-                    // .color(Color::rgba(64, 128, 255, 128))
-                    // .background_color(Color::rgba(64, 128, 255, 20));
+                    Histogram::new(cx, Data::bus, 250.0, (-32.0, 8.0), ValueScaling::Decibels)
+                        .width(Pixels(500.0))
+                        .color(Color::rgba(64, 128, 255, 128))
+                        .background_color(Color::rgba(64, 128, 255, 20));
                     UnitRuler::new(
                         cx,
                         (-32.0, 8.0),

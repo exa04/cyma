@@ -1,11 +1,12 @@
-use crate::prelude::MonoChannel;
-use crate::utils::{MonoChannelConsumer, ValueScaling};
+use crate::bus::Bus;
+use crate::utils::ValueScaling;
+use nih_plug::nih_dbg;
 use nih_plug::prelude::AtomicF32;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-pub struct Histogram {
+struct HistogramState {
     data: [AtomicF32; 2048],
     edges: [AtomicF32; 2047],
 
@@ -14,41 +15,101 @@ pub struct Histogram {
 
     size: AtomicUsize,
     decay_weight: AtomicF32,
-    range: (f32, f32),
-    scaling: ValueScaling,
-
-    consumer: Arc<Mutex<MonoChannelConsumer>>,
 }
 
-impl Histogram {
-    pub fn new(
+pub struct Histogram<B: Bus<f32> + 'static> {
+    bus: Arc<B>,
+    dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
+    state: Arc<HistogramState>,
+    range: (f32, f32),
+    scaling: ValueScaling,
+}
+
+impl<B: Bus<f32> + 'static> Histogram<B> {
+    pub fn new<L: Lens<Target = Arc<B>>>(
         cx: &mut Context,
+        bus: L,
         decay: f32,
         range: (f32, f32),
         scaling: ValueScaling,
-        channel: MonoChannel,
     ) -> Handle<Self> {
-        let consumer = channel.get_consumer();
-        let sample_rate = consumer.get_sample_rate();
+        let bus = bus.get(cx);
 
-        Self {
+        let state: Arc<_> = HistogramState {
             data: [0f32; 2048].map(|x| x.into()),
             edges: [0f32; 2047].map(|x| x.into()),
-
-            sample_rate,
+            sample_rate: bus.sample_rate(),
             decay,
-
             size: 1.into(),
             decay_weight: 0.0.into(),
+        }
+        .into();
+
+        let state_c = state.clone();
+
+        let dispatcher_handle = bus.register_dispatcher(move |samples| {
+            let decay_weight = state_c.decay_weight.load(Ordering::Relaxed);
+            let total_decay_weight = decay_weight.powi(samples.len() as i32);
+
+            nih_dbg!(&decay_weight);
+
+            for i in 0..state_c.size.load(Ordering::Relaxed) - 1 {
+                state_c.data[i]
+                    .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |sample| {
+                        Some(sample * total_decay_weight)
+                    })
+                    .unwrap();
+            }
+
+            let his = samples
+                .map(|sample| {
+                    let bin_index = {
+                        let value = sample.abs();
+                        if value < state_c.edges[0].load(Ordering::Relaxed) {
+                            0
+                        } else {
+                            let size = state_c.size.load(Ordering::Relaxed);
+
+                            // Check if the value is larger than the last edge
+                            if value > state_c.edges[size - 1].load(Ordering::Relaxed) {
+                                state_c.edges.len()
+                            } else {
+                                // Binary search to find the bin for the given value
+                                let mut left = 0;
+                                let mut right = size - 1;
+
+                                while left <= right {
+                                    let mid = left + (right - left) / 2;
+                                    if value >= state_c.edges[mid].load(Ordering::Relaxed) {
+                                        left = mid + 1;
+                                    } else {
+                                        right = mid - 1;
+                                    }
+                                }
+                                // Return the bin index
+                                left
+                            }
+                        }
+                    };
+                    state_c.data[bin_index].fetch_add(1.0 - decay_weight, Ordering::Relaxed)
+                })
+                .collect::<Vec<_>>();
+        });
+
+        Self {
+            bus,
+            dispatcher_handle,
+            state,
             range,
             scaling,
-
-            consumer: Arc::new(Mutex::new(consumer)),
         }
         .build(cx, |_| {})
     }
+
     fn update(&self) {
-        let size: usize = self.size.load(Ordering::Relaxed);
+        let size: usize = self.state.size.load(Ordering::Relaxed);
+
+        nih_dbg!(&size);
 
         (0..size).for_each(|x| {
             let scaled = self.range.0 + (x as f32 / size as f32) * (self.range.1 - self.range.0);
@@ -56,11 +117,11 @@ impl Histogram {
                 .scaling
                 .normalized_to_value(scaled, self.range.0, self.range.1);
 
-            self.edges[x].store(edge, Ordering::Relaxed);
+            self.state.edges[x].store(edge, Ordering::Relaxed);
         });
 
-        self.decay_weight.store(
-            Self::decay_weight(self.decay, self.sample_rate),
+        self.state.decay_weight.store(
+            Self::decay_weight(self.state.decay, self.state.sample_rate),
             Ordering::Relaxed,
         );
     }
@@ -68,38 +129,9 @@ impl Histogram {
     fn decay_weight(decay: f32, sample_rate: f32) -> f32 {
         0.25f64.powf(((decay / 1000.0) as f64 * sample_rate as f64).recip()) as f32
     }
-
-    // Function to find the bin for a given linear audio value
-    fn find_bin(&self, value: f32) -> usize {
-        if value < self.edges[0].load(Ordering::Relaxed) {
-            return 0;
-        }
-
-        let size = self.size.load(Ordering::Relaxed);
-
-        // Check if the value is larger than the last edge
-        if value > self.edges[size - 1].load(Ordering::Relaxed) {
-            return self.edges.len();
-        }
-
-        // Binary search to find the bin for the given value
-        let mut left = 0;
-        let mut right = size - 1;
-
-        while left <= right {
-            let mid = left + (right - left) / 2;
-            if value >= self.edges[mid].load(Ordering::Relaxed) {
-                left = mid + 1;
-            } else {
-                right = mid - 1;
-            }
-        }
-        // Return the bin index
-        left
-    }
 }
 
-impl View for Histogram {
+impl<B: Bus<f32> + 'static> View for Histogram<B> {
     fn element(&self) -> Option<&'static str> {
         Some("histogram")
     }
@@ -114,52 +146,43 @@ impl View for Histogram {
         let h = bounds.h;
         let h_ceil = bounds.h.ceil() as usize;
 
+        self.bus.update();
+
         let mut stroke = vg::Path::new();
-        let size = self.size.load(Ordering::Relaxed);
+        let size = self.state.size.load(Ordering::Relaxed);
 
         let nr_bins = if h_ceil != size && h_ceil < 2048 {
-            self.size.store(h_ceil, Ordering::Relaxed);
+            self.state.size.store(h_ceil, Ordering::Relaxed);
             self.update();
             h_ceil
         } else {
             size
         };
 
-        {
-            let mut consumer = self.consumer.lock().unwrap();
-
-            let samples = std::iter::from_fn(|| consumer.receive()).collect::<Vec<_>>();
-
-            let decay_weight = self.decay_weight.load(Ordering::Relaxed);
-            let total_decay_weight = decay_weight.powi(samples.len() as i32);
-
-            for i in 0..self.size.load(Ordering::Relaxed) - 1 {
-                self.data[i]
-                    .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |sample| {
-                        Some(sample * total_decay_weight)
-                    })
-                    .unwrap();
-            }
-
-            for sample in samples {
-                let bin_index = self.find_bin(sample.abs());
-                self.data[bin_index].fetch_add(1.0 - decay_weight, Ordering::Relaxed);
-            }
-        }
-
         let largest = self
+            .state
             .data
             .iter()
+            .take(nr_bins)
             .map(|x| x.load(Ordering::Relaxed))
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or_default();
 
-        stroke.move_to(x + self.data[nr_bins - 1].load(Ordering::Relaxed) * w, y);
+        stroke.move_to(
+            x + self.state.data[nr_bins - 1].load(Ordering::Relaxed) * w,
+            y,
+        );
 
         if largest > 0.0 {
+            nih_dbg!(self
+                .state
+                .data
+                .iter()
+                .map(|x| x.load(Ordering::Relaxed))
+                .collect::<Vec<f32>>());
             for i in 0..nr_bins {
                 stroke.line_to(
-                    x + (self.data[nr_bins - i].load(Ordering::Relaxed) / largest) * w,
+                    x + (self.state.data[nr_bins - i].load(Ordering::Relaxed) / largest) * w,
                     y + h * i as f32 / (nr_bins - 1) as f32,
                 );
             }
