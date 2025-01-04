@@ -1,11 +1,9 @@
 //! Generic utility functions and structures.
 
 pub mod accumulators;
-mod channel;
 mod ring_buffer;
 mod spectrum;
 
-pub use channel::*;
 pub use ring_buffer::*;
 pub use spectrum::*;
 

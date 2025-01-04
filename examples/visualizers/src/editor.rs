@@ -1,16 +1,17 @@
 use cyma::prelude::*;
-use cyma::utils::MonoChannel;
 use nih_plug::editor::Editor;
 use nih_plug_vizia::widgets::ResizeHandle;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
 use std::sync::Arc;
 
 #[derive(Lens, Clone)]
-pub(crate) struct Data {}
+pub(crate) struct Data {
+    bus: Arc<MonoBus>,
+}
 
 impl Data {
-    pub(crate) fn new() -> Self {
-        Self {}
+    pub(crate) fn new(bus: Arc<MonoBus>) -> Self {
+        Self { bus }
     }
 }
 
@@ -20,11 +21,7 @@ pub(crate) fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (800, 600))
 }
 
-pub(crate) fn create(
-    editor_data: Data,
-    editor_state: Arc<ViziaState>,
-    channel: MonoChannel,
-) -> Option<Box<dyn Editor>> {
+pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
         assets::register_noto_sans_light(cx);
         editor_data.clone().build(cx);
@@ -42,33 +39,33 @@ pub(crate) fn create(
                     .color(Color::rgb(30, 30, 30));
                     Graph::peak(
                         cx,
+                        Data::bus,
                         10.0,
                         50.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
-                        channel.clone(),
                     )
                     .color(Color::rgba(255, 255, 255, 60))
                     .background_color(Color::rgba(255, 255, 255, 30));
                     Graph::rms(
                         cx,
+                        Data::bus,
                         10.0,
                         250.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
-                        channel.clone(),
                     )
                     .color(Color::rgba(255, 92, 92, 128));
-                    Histogram::new(
-                        cx,
-                        250.0,
-                        (-32.0, 8.0),
-                        ValueScaling::Decibels,
-                        channel.clone(),
-                    )
-                    .width(Pixels(200.0))
-                    .color(Color::rgba(64, 128, 255, 128))
-                    .background_color(Color::rgba(64, 128, 255, 20));
+                    // Histogram::new(
+                    //     cx,
+                    //     250.0,
+                    //     (-32.0, 8.0),
+                    //     ValueScaling::Decibels,
+                    //     Data::bus,
+                    // )
+                    // .width(Pixels(200.0))
+                    // .color(Color::rgba(64, 128, 255, 128))
+                    // .background_color(Color::rgba(64, 128, 255, 20));
                     UnitRuler::new(
                         cx,
                         (-32.0, 8.0),
@@ -89,49 +86,49 @@ pub(crate) fn create(
                     .right(Pixels(8.0))
                     .left(Stretch(1.0));
                 });
-                ZStack::new(cx, |cx| {
-                    Meter::rms(
-                        cx,
-                        800.0,
-                        (-32.0, 8.0),
-                        ValueScaling::Decibels,
-                        Orientation::Vertical,
-                        channel.clone(),
-                    )
-                    .background_color(Color::rgba(255, 92, 92, 50));
-                    Meter::peak(
-                        cx,
-                        400.0,
-                        (-32.0, 8.0),
-                        ValueScaling::Decibels,
-                        Orientation::Vertical,
-                        channel.clone(),
-                    )
-                    .background_color(Color::rgba(255, 255, 255, 30));
-                    Meter::peak(
-                        cx,
-                        800.0,
-                        (-32.0, 8.0),
-                        ValueScaling::Decibels,
-                        Orientation::Vertical,
-                        channel.clone(),
-                    )
-                    .color(Color::rgba(255, 255, 255, 120));
-                })
-                .background_color(Color::rgb(8, 8, 8))
-                .width(Pixels(24.0));
+                // ZStack::new(cx, |cx| {
+                //     Meter::rms(
+                //         cx,
+                //         800.0,
+                //         (-32.0, 8.0),
+                //         ValueScaling::Decibels,
+                //         Orientation::Vertical,
+                //         Data::bus,
+                //     )
+                //     .background_color(Color::rgba(255, 92, 92, 50));
+                //     Meter::peak(
+                //         cx,
+                //         400.0,
+                //         (-32.0, 8.0),
+                //         ValueScaling::Decibels,
+                //         Orientation::Vertical,
+                //         Data::bus,
+                //     )
+                //     .background_color(Color::rgba(255, 255, 255, 30));
+                //     Meter::peak(
+                //         cx,
+                //         800.0,
+                //         (-32.0, 8.0),
+                //         ValueScaling::Decibels,
+                //         Orientation::Vertical,
+                //         Data::bus,
+                //     )
+                //     .color(Color::rgba(255, 255, 255, 120));
+                // })
+                // .background_color(Color::rgb(8, 8, 8))
+                // .width(Pixels(24.0));
             })
             .background_color(Color::rgb(16, 16, 16))
             .border_width(Pixels(1.0))
             .border_color(Color::rgb(48, 48, 48));
 
-            HStack::new(cx, |cx| {
-                Oscilloscope::new(cx, 10.0, (-1.0, 1.0), ValueScaling::Linear, channel.clone())
-                    .color(Color::rgba(255, 255, 255, 120));
-            })
-            .background_color(Color::rgb(16, 16, 16))
-            .border_width(Pixels(1.0))
-            .border_color(Color::rgb(48, 48, 48));
+            // HStack::new(cx, |cx| {
+            //     Oscilloscope::new(cx, 10.0, (-1.0, 1.0), ValueScaling::Linear, Data::bus)
+            //         .color(Color::rgba(255, 255, 255, 120));
+            // })
+            // .background_color(Color::rgb(16, 16, 16))
+            // .border_width(Pixels(1.0))
+            // .border_color(Color::rgb(48, 48, 48));
 
             Label::new(
                 cx,

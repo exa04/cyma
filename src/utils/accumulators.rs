@@ -1,6 +1,6 @@
 use crate::utils::RingBuffer;
 
-pub trait Accumulator {
+pub trait Accumulator: Sync + Send {
     fn accumulate(&mut self, sample: f32) -> Option<f32>;
     fn prev(&self) -> f32;
     fn set_sample_rate(&mut self, sample_rate: f32);

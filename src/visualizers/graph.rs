@@ -1,17 +1,19 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::prelude::MonoChannel;
+use crate::bus::Bus;
 use crate::utils::accumulators::{MinimumAccumulator, PeakAccumulator, RMSAccumulator};
-use crate::utils::{accumulators::Accumulator, MonoChannelConsumer, RingBuffer, ValueScaling};
+use crate::utils::{accumulators::Accumulator, RingBuffer, ValueScaling};
+use core::slice;
 use nih_plug_vizia::vizia::{prelude::*, vg};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
-pub struct Graph<A: Accumulator + 'static> {
-    consumer: Arc<Mutex<MonoChannelConsumer>>,
+pub struct Graph<B: Bus<f32> + 'static, A: Accumulator + 'static> {
+    bus: Arc<B>,
     buffer: Arc<Mutex<RingBuffer<f32>>>,
     range: (f32, f32),
     scaling: ValueScaling,
     fill_from: FillFrom,
     accumulator: Arc<Mutex<A>>,
+    dispatcher_handle: Arc<dyn for<'a> Fn(<B as Bus<f32>>::I<'a>) + Sync + Send + 'static>,
 }
 
 enum GraphEvents {
@@ -19,31 +21,52 @@ enum GraphEvents {
     UpdateScaling(ValueScaling),
 }
 
-impl<A: Accumulator + 'static> Graph<A> {
-    pub fn with_accumulator(
+impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
+    pub fn with_accumulator<L>(
         cx: &mut Context,
+        bus: L,
         mut accumulator: A,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-        channel: MonoChannel,
-    ) -> Handle<Self> {
-        let consumer = channel.get_consumer();
-        accumulator.set_sample_rate(consumer.get_sample_rate());
+    ) -> Handle<Self>
+    where
+        L: Lens<Target = Arc<B>>,
+    {
+        let bus = bus.get(cx);
+
+        accumulator.set_sample_rate(bus.sample_rate());
+
+        let buffer: Arc<Mutex<RingBuffer<f32>>> = Default::default();
+        let buffer_c = buffer.clone();
+
+        let accumulator = Arc::new(Mutex::new(accumulator));
+        let accumulator_c = accumulator.clone();
+
+        let dispatcher_handle = bus.register_dispatcher(move |samples| {
+            if let (Ok(mut buf), Ok(mut acc)) = (buffer_c.lock(), accumulator_c.lock()) {
+                for sample in samples {
+                    if let Some(sample) = acc.accumulate(*sample) {
+                        buf.enqueue(sample);
+                    }
+                }
+            }
+        });
 
         Self {
-            consumer: Arc::new(Mutex::new(consumer)),
-            buffer: Default::default(),
+            bus,
+            buffer,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
             fill_from: FillFrom::Bottom,
-            accumulator: Arc::new(Mutex::new(accumulator)),
+            accumulator,
+            dispatcher_handle,
         }
         .build(cx, |_| {})
-        .range(range)
-        .scaling(scaling)
+        // .range(range)
+        // .scaling(scaling)
     }
 }
-impl<A: Accumulator + 'static> View for Graph<A> {
+impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
     fn element(&self) -> Option<&'static str> {
         Some("graph")
     }
@@ -65,6 +88,8 @@ impl<A: Accumulator + 'static> View for Graph<A> {
 
         // Update buffer
 
+        self.bus.update();
+
         let ring_buf = &mut (self.buffer.lock().unwrap());
 
         {
@@ -75,15 +100,9 @@ impl<A: Accumulator + 'static> View for Graph<A> {
                 ring_buf.resize(width_ceil);
                 acc.set_size(width_ceil);
             }
-
-            let mut consumer = self.consumer.lock().unwrap();
-
-            while let Some(sample) = consumer.receive() {
-                if let Some(sample) = acc.accumulate(sample) {
-                    ring_buf.enqueue(sample);
-                }
-            }
         }
+
+        if ring_buf.len() == 0 {return;}
 
         let mut peak = self
             .scaling
@@ -127,7 +146,7 @@ impl<A: Accumulator + 'static> View for Graph<A> {
     }
 }
 
-impl<'a, A: Accumulator + 'static> FillModifiers for Handle<'a, Graph<A>> {
+/* impl<'a, A: Accumulator + 'static> FillModifiers for Handle<'a, Graph<A>> {
     /// Allows for the graph to be filled from the top instead of the bottom.
     ///
     /// This is useful for certain graphs like gain reduction meters.
@@ -191,59 +210,68 @@ impl<'a, A: Accumulator + 'static> RangeModifiers for Handle<'a, Graph<A>> {
 
         self
     }
-}
+} */
 
-impl Graph<PeakAccumulator> {
-    pub fn peak(
+impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
+    pub fn peak<L>(
         cx: &mut Context,
+        bus: L,
         duration: f32,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-        channel: MonoChannel,
-    ) -> Handle<Self> {
+    ) -> Handle<Self>
+    where
+        L: Lens<Target = Arc<B>>,
+    {
         Self::with_accumulator(
             cx,
+            bus,
             PeakAccumulator::new(duration, decay),
             range,
             scaling,
-            channel,
         )
     }
 }
-impl Graph<MinimumAccumulator> {
-    pub fn minima(
+impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
+    pub fn minima<L>(
         cx: &mut Context,
+        bus: L,
         duration: f32,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-        channel: MonoChannel,
-    ) -> Handle<Self> {
+    ) -> Handle<Self>
+    where
+        L: Lens<Target = Arc<B>>,
+    {
         Self::with_accumulator(
             cx,
+            bus,
             MinimumAccumulator::new(duration, decay),
             range,
             scaling,
-            channel,
         )
     }
 }
-impl Graph<RMSAccumulator> {
-    pub fn rms(
+impl<B: Bus<f32> + 'static> Graph<B, RMSAccumulator> {
+    pub fn rms<L>(
         cx: &mut Context,
+        bus: L,
         duration: f32,
         window_size: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-        channel: MonoChannel,
-    ) -> Handle<Self> {
+    ) -> Handle<Self>
+    where
+        L: Lens<Target = Arc<B>>,
+    {
         Self::with_accumulator(
             cx,
+            bus,
             RMSAccumulator::new(duration, window_size),
             range,
             scaling,
-            channel,
         )
     }
 }

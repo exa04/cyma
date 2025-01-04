@@ -8,11 +8,17 @@ use std::ops::{Index, IndexMut};
 /// oldest element is popped off the head of the buffer. Due to its fixed-size
 /// nature, the ring buffer is very fast and doesn't dynamically reallocate
 /// itself, or move any elements around when an element is added.
-#[derive(Clone, Default, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RingBuffer<T> {
     head: usize,
     size: usize,
     data: Vec<T>,
+}
+
+impl<T: Default + Copy> Default for RingBuffer<T> {
+    fn default() -> Self {
+        Self::new(1)
+    }
 }
 
 impl<T: Default + Copy> RingBuffer<T> {

@@ -1,4 +1,4 @@
-use cyma::{prelude::*, utils::MonoChannel};
+use cyma::prelude::*;
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::sync::{Arc, Mutex};
@@ -7,7 +7,7 @@ mod editor;
 
 pub struct VisualizersPlugin {
     params: Arc<DemoParams>,
-    audio_inlet: MonoChannel,
+    bus: Arc<MonoBus>,
 }
 
 #[derive(Params)]
@@ -20,7 +20,7 @@ impl Default for VisualizersPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            audio_inlet: MonoChannel::default(),
+            bus: MonoBus::default().into(),
         }
     }
 }
@@ -64,9 +64,8 @@ impl Plugin for VisualizersPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(),
+            editor::Data::new(self.bus.clone()),
             self.params.editor_state.clone(),
-            self.audio_inlet.clone(),
         )
     }
 
@@ -76,7 +75,7 @@ impl Plugin for VisualizersPlugin {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
-        self.audio_inlet.set_sample_rate(buffer_config.sample_rate);
+        self.bus.set_sample_rate(buffer_config.sample_rate);
         true
     }
 
@@ -87,7 +86,7 @@ impl Plugin for VisualizersPlugin {
         _: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         if self.params.editor_state.is_open() {
-            self.audio_inlet.enqueue_buffer_summing(buffer);
+            self.bus.send_buffer(buffer);
         }
         ProcessStatus::Normal
     }
