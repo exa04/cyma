@@ -33,6 +33,7 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Meter<B, A> {
         let bus = bus.get(cx);
 
         accumulator.set_sample_rate(bus.sample_rate());
+        accumulator.set_size(bus.sample_rate() as usize);
 
         let accumulator = Arc::new(Mutex::new(accumulator));
         let accumulator_c = accumulator.clone();
@@ -91,8 +92,7 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> View for Meter<B, A> {
                 path.move_to(x, y + h * (1. - level));
                 path.line_to(x + w, y + h * (1. - level));
 
-                let mut outline = path.clone();
-                outline.close();
+                let outline = path.clone();
                 canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
 
                 let fill_from_n = match self.fill_from {
@@ -117,8 +117,7 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> View for Meter<B, A> {
                 path.move_to(x + w * level, y);
                 path.line_to(x + w * level, y + h);
 
-                let mut outline = path.clone();
-                outline.close();
+                let outline = path.clone();
                 canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
 
                 let fill_from_n = match self.fill_from {
