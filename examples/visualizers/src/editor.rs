@@ -86,49 +86,49 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                     .right(Pixels(8.0))
                     .left(Stretch(1.0));
                 });
-                // ZStack::new(cx, |cx| {
-                //     Meter::rms(
-                //         cx,
-                //         800.0,
-                //         (-32.0, 8.0),
-                //         ValueScaling::Decibels,
-                //         Orientation::Vertical,
-                //         Data::bus,
-                //     )
-                //     .background_color(Color::rgba(255, 92, 92, 50));
-                //     Meter::peak(
-                //         cx,
-                //         400.0,
-                //         (-32.0, 8.0),
-                //         ValueScaling::Decibels,
-                //         Orientation::Vertical,
-                //         Data::bus,
-                //     )
-                //     .background_color(Color::rgba(255, 255, 255, 30));
-                //     Meter::peak(
-                //         cx,
-                //         800.0,
-                //         (-32.0, 8.0),
-                //         ValueScaling::Decibels,
-                //         Orientation::Vertical,
-                //         Data::bus,
-                //     )
-                //     .color(Color::rgba(255, 255, 255, 120));
-                // })
-                // .background_color(Color::rgb(8, 8, 8))
-                // .width(Pixels(24.0));
+                ZStack::new(cx, |cx| {
+                    Meter::rms(
+                        cx,
+                        Data::bus,
+                        800.0,
+                        (-32.0, 8.0),
+                        ValueScaling::Decibels,
+                        Orientation::Vertical,
+                    )
+                    .background_color(Color::rgba(255, 92, 92, 50));
+                    Meter::peak(
+                        cx,
+                        Data::bus,
+                        400.0,
+                        (-32.0, 8.0),
+                        ValueScaling::Decibels,
+                        Orientation::Vertical,
+                    )
+                    .background_color(Color::rgba(255, 255, 255, 30));
+                    Meter::peak(
+                        cx,
+                        Data::bus,
+                        800.0,
+                        (-32.0, 8.0),
+                        ValueScaling::Decibels,
+                        Orientation::Vertical,
+                    )
+                    .color(Color::rgba(255, 255, 255, 120));
+                })
+                .background_color(Color::rgb(8, 8, 8))
+                .width(Pixels(24.0));
             })
             .background_color(Color::rgb(16, 16, 16))
             .border_width(Pixels(1.0))
             .border_color(Color::rgb(48, 48, 48));
 
-            // HStack::new(cx, |cx| {
-            //     Oscilloscope::new(cx, 10.0, (-1.0, 1.0), ValueScaling::Linear, Data::bus)
-            //         .color(Color::rgba(255, 255, 255, 120));
-            // })
-            // .background_color(Color::rgb(16, 16, 16))
-            // .border_width(Pixels(1.0))
-            // .border_color(Color::rgb(48, 48, 48));
+            HStack::new(cx, |cx| {
+                Oscilloscope::new(cx, Data::bus, 10.0, (-1.0, 1.0), ValueScaling::Linear)
+                    .color(Color::rgba(255, 255, 255, 120));
+            })
+            .background_color(Color::rgb(16, 16, 16))
+            .border_width(Pixels(1.0))
+            .border_color(Color::rgb(48, 48, 48));
 
             Label::new(
                 cx,

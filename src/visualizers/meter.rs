@@ -1,61 +1,58 @@
 use std::sync::{Arc, Mutex};
 
 use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::prelude::MonoChannel;
+use crate::bus::Bus;
 use crate::utils::accumulators::{
     Accumulator, MinimumAccumulator, PeakAccumulator, RMSAccumulator,
 };
-use crate::utils::{MonoChannelConsumer, ValueScaling};
+use crate::utils::ValueScaling;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-/// Meter that displays the data inside a [`VisualizerBuffer`].
-///
-/// Useful for peak meters, loudness meters, etc.
-///
-/// # Example
-///
-/// ```
-/// Meter::new(
-///     cx,
-///     Data::peak_buffer,
-///     (-32.0, 8.0),
-///     ValueScaling::Decibels,
-///     Orientation::Vertical,
-/// )
-/// .width(Pixels(24.0))
-/// .height(Pixels(128.0))
-/// .background_color(Color::rgb(100, 100, 100));
-/// ```
-pub struct Meter<A: Accumulator + 'static> {
+pub struct Meter<B: Bus<f32> + 'static, A: Accumulator + 'static> {
+    bus: Arc<B>,
+    dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
+    accumulator: Arc<Mutex<A>>,
     range: (f32, f32),
     scaling: ValueScaling,
     fill_from: FillFrom,
     orientation: Orientation,
-    consumer: Arc<Mutex<MonoChannelConsumer>>,
-    accumulator: Arc<Mutex<A>>,
 }
 
-impl<A: Accumulator + 'static> Meter<A> {
-    pub fn with_accumulator(
+impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Meter<B, A> {
+    pub fn with_accumulator<L>(
         cx: &mut Context,
+        bus: L,
         mut accumulator: A,
         range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
         orientation: Orientation,
-        channel: MonoChannel,
-    ) -> Handle<Self> {
-        let consumer = channel.get_consumer();
+    ) -> Handle<Self>
+    where
+        L: Lens<Target = Arc<B>>,
+    {
+        let bus = bus.get(cx);
 
-        accumulator.set_sample_rate(consumer.get_sample_rate());
-        accumulator.set_size(consumer.get_sample_rate() as usize);
+        accumulator.set_sample_rate(bus.sample_rate());
+
+        let accumulator = Arc::new(Mutex::new(accumulator));
+        let accumulator_c = accumulator.clone();
+
+        let dispatcher_handle = bus.register_dispatcher(move |samples| {
+            if let Ok(mut acc) = accumulator_c.lock() {
+                for sample in samples {
+                    let _ = acc.accumulate(*sample);
+                }
+            }
+        });
 
         Self {
+            bus,
+            dispatcher_handle,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
             fill_from: FillFrom::Bottom,
             orientation,
-            consumer: Arc::new(Mutex::new(consumer)),
-            accumulator: Arc::new(Mutex::new(accumulator)),
+            accumulator,
         }
         .build(cx, |_| {})
         .range(range)
@@ -68,7 +65,7 @@ enum MeterEvents {
     UpdateScaling(ValueScaling),
 }
 
-impl<A: Accumulator + 'static> View for Meter<A> {
+impl<B: Bus<f32> + 'static, A: Accumulator + 'static> View for Meter<B, A> {
     fn element(&self) -> Option<&'static str> {
         Some("meter")
     }
@@ -80,19 +77,9 @@ impl<A: Accumulator + 'static> View for Meter<A> {
         let w = bounds.w;
         let h = bounds.h;
 
-        let sample = {
-            let mut sample = None;
+        self.bus.update();
 
-            let mut consumer = self.consumer.lock().unwrap();
-            let mut acc = self.accumulator.lock().unwrap();
-            while let Some(x) = consumer.receive() {
-                if let Some(x) = acc.accumulate(x) {
-                    sample = Some(x);
-                }
-            }
-
-            sample.unwrap_or_else(|| acc.prev())
-        };
+        let sample = self.accumulator.lock().unwrap().prev();
 
         let level = self
             .scaling
@@ -158,7 +145,9 @@ impl<A: Accumulator + 'static> View for Meter<A> {
     }
 }
 
-impl<'a, A: Accumulator + 'static> FillModifiers for Handle<'a, Meter<A>> {
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> FillModifiers
+    for Handle<'a, Meter<B, A>>
+{
     /// Allows for the meter to be filled from the maximum instead of the minimum value.
     ///
     /// This is useful for certain meters like gain reduction meters.
@@ -203,7 +192,9 @@ impl<'a, A: Accumulator + 'static> FillModifiers for Handle<'a, Meter<A>> {
     }
 }
 
-impl<'a, A: Accumulator + 'static> RangeModifiers for Handle<'a, Meter<A>> {
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
+    for Handle<'a, Meter<B, A>>
+{
     fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
         let e = self.entity();
 
@@ -224,60 +215,60 @@ impl<'a, A: Accumulator + 'static> RangeModifiers for Handle<'a, Meter<A>> {
     }
 }
 
-impl Meter<PeakAccumulator> {
-    pub fn peak(
+impl<B: Bus<f32> + 'static> Meter<B, PeakAccumulator> {
+    pub fn peak<L: Lens<Target = Arc<B>>>(
         cx: &mut Context,
+        bus: L,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
         orientation: Orientation,
-        channel: MonoChannel,
     ) -> Handle<Self> {
         Self::with_accumulator(
             cx,
+            bus,
             PeakAccumulator::new(1.0, decay),
             range,
             scaling,
             orientation,
-            channel,
         )
     }
 }
-impl Meter<MinimumAccumulator> {
-    pub fn minima(
+impl<B: Bus<f32> + 'static> Meter<B, MinimumAccumulator> {
+    pub fn minima<L: Lens<Target = Arc<B>>>(
         cx: &mut Context,
+        bus: L,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
         orientation: Orientation,
-        channel: MonoChannel,
     ) -> Handle<Self> {
         Self::with_accumulator(
             cx,
+            bus,
             MinimumAccumulator::new(1.0, decay),
             range,
             scaling,
             orientation,
-            channel,
         )
     }
 }
-impl Meter<RMSAccumulator> {
-    pub fn rms(
+impl<B: Bus<f32> + 'static> Meter<B, RMSAccumulator> {
+    pub fn rms<L: Lens<Target = Arc<B>>>(
         cx: &mut Context,
+        bus: L,
         window_size: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
         orientation: Orientation,
-        channel: MonoChannel,
     ) -> Handle<Self> {
         Self::with_accumulator(
             cx,
+            bus,
             RMSAccumulator::new(1.0, window_size),
             range,
             scaling,
             orientation,
-            channel,
         )
     }
 }

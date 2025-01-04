@@ -1,7 +1,7 @@
 use cyma::prelude::*;
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 mod editor;
 
@@ -86,7 +86,7 @@ impl Plugin for VisualizersPlugin {
         _: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
         if self.params.editor_state.is_open() {
-            self.bus.send_buffer(buffer);
+            self.bus.send_buffer_summing(buffer);
         }
         ProcessStatus::Normal
     }

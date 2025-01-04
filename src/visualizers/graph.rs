@@ -2,9 +2,8 @@ use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::bus::Bus;
 use crate::utils::accumulators::{MinimumAccumulator, PeakAccumulator, RMSAccumulator};
 use crate::utils::{accumulators::Accumulator, RingBuffer, ValueScaling};
-use core::slice;
 use nih_plug_vizia::vizia::{prelude::*, vg};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
 pub struct Graph<B: Bus<f32> + 'static, A: Accumulator + 'static> {
     bus: Arc<B>,
@@ -13,7 +12,7 @@ pub struct Graph<B: Bus<f32> + 'static, A: Accumulator + 'static> {
     scaling: ValueScaling,
     fill_from: FillFrom,
     accumulator: Arc<Mutex<A>>,
-    dispatcher_handle: Arc<dyn for<'a> Fn(<B as Bus<f32>>::I<'a>) + Sync + Send + 'static>,
+    dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Sync + Send + 'static>,
 }
 
 enum GraphEvents {
@@ -62,8 +61,8 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
             dispatcher_handle,
         }
         .build(cx, |_| {})
-        // .range(range)
-        // .scaling(scaling)
+        .range(range)
+        .scaling(scaling)
     }
 }
 impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
@@ -102,7 +101,9 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
             }
         }
 
-        if ring_buf.len() == 0 {return;}
+        if ring_buf.len() == 0 {
+            return;
+        }
 
         let mut peak = self
             .scaling
@@ -146,44 +147,14 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
     }
 }
 
-/* impl<'a, A: Accumulator + 'static> FillModifiers for Handle<'a, Graph<A>> {
-    /// Allows for the graph to be filled from the top instead of the bottom.
-    ///
-    /// This is useful for certain graphs like gain reduction meters.
-    ///
-    /// # Example
-    ///
-    /// Here's a gain reduction graph, which you could overlay on top of a peak graph.
-    ///
-    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
-    ///
-    /// ```
-    /// Graph::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels)
-    ///     .fill_from_max()
-    ///     .color(Color::rgba(255, 0, 0, 160))
-    ///     .background_color(Color::rgba(255, 0, 0, 60));
-    /// ```
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> FillModifiers
+    for Handle<'a, Graph<B, A>>
+{
     fn fill_from_max(self) -> Self {
         self.modify(|graph| {
             graph.fill_from = FillFrom::Top;
         })
     }
-    /// Allows for the graph to be filled from any desired level.
-    ///
-    /// This is useful for certain graphs like gain reduction meters.
-    ///
-    /// # Example
-    ///
-    /// Here's a gain reduction graph, which you could overlay on top of a peak graph.
-    ///
-    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
-    ///
-    /// ```
-    /// Graph::new(cx, Data::gain_mult, (-32.0, 6.0), ValueScaling::Decibels)
-    ///     .fill_from(0.0) // Fills the graph from 0.0dB downwards
-    ///     .color(Color::rgba(255, 0, 0, 160))
-    ///     .background_color(Color::rgba(255, 0, 0, 60));
-    /// ```
     fn fill_from_value(self, level: f32) -> Self {
         self.modify(|graph| {
             graph.fill_from = FillFrom::Value(level);
@@ -191,7 +162,9 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
     }
 }
 
-impl<'a, A: Accumulator + 'static> RangeModifiers for Handle<'a, Graph<A>> {
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
+    for Handle<'a, Graph<B, A>>
+{
     fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
         let e = self.entity();
 
@@ -210,7 +183,7 @@ impl<'a, A: Accumulator + 'static> RangeModifiers for Handle<'a, Graph<A>> {
 
         self
     }
-} */
+}
 
 impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
     pub fn peak<L>(

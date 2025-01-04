@@ -33,7 +33,7 @@ impl Default for MonoBus {
 
 impl MonoBus {
     #[inline]
-    pub fn send_buffer(&self, buffer: &mut Buffer) {
+    pub fn send_buffer_summing(&self, buffer: &mut Buffer) {
         let channels = buffer.channels();
 
         if channels == 1 {
@@ -53,8 +53,11 @@ impl MonoBus {
     }
 }
 
+// TODO Cleanup automatically
+
 impl Bus<f32> for MonoBus {
     type I<'a> = slice::Iter<'a, f32>;
+    type O<'a> = Self::I<'a>;
 
     fn set_sample_rate(&self, sample_rate: f32) {
         self.sample_rate
@@ -68,7 +71,9 @@ impl Bus<f32> for MonoBus {
     fn update(&self) {
         let samples = self.channel.1.try_iter().collect::<Vec<_>>();
 
-        if samples.is_empty() { return; }
+        if samples.is_empty() {
+            return;
+        }
 
         self.dispatchers
             .read()

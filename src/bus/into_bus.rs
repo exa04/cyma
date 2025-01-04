@@ -1,71 +1,44 @@
-// use core::slice;
-// use nih_plug::prelude::AtomicF32;
-// use std::{
-//     iter::{Copied, Map},
-//     sync::{atomic::Ordering, Arc},
-// };
+use core::slice;
+use std::sync::Arc;
 
-// use super::*;
+use super::*;
 
-// pub struct IntoMonoBus<const C: usize, D>
-// where
-//     for<'a> D: FnMut([f32; C]) -> f32 + 'static + Copy + Clone,
-// {
-//     dispatchers: DispatcherList<C>,
-//     sample_rate: Arc<AtomicF32>,
-//     downmixer: D,
-// }
+#[derive(Clone)]
+pub struct IntoMonoBus<const C: usize, D>
+where
+    for<'a> D: Fn([f32; C]) -> f32 + 'static + Copy + Clone,
+{
+    pub(crate) bus: MultiChannelBus<C>,
+    pub(crate) downmixer: D,
+}
 
-// impl<const C: usize, D> IntoMonoBus<C, D>
-// where
-//     for<'a> D: FnMut([f32; C]) -> f32 + 'static + Copy + Clone,
-// {
-//     pub fn new(dispatchers: DispatcherList<C>, sample_rate: Arc<AtomicF32>, downmixer: D) -> Self {
-//         Self {
-//             dispatchers,
-//             sample_rate,
-//             downmixer,
-//         }
-//     }
-// }
+impl<const C: usize, D> Bus<f32> for IntoMonoBus<C, D>
+where
+    for<'a> D: Fn([f32; C]) -> f32 + 'static + Copy + Clone,
+{
+    type I<'a> = slice::Iter<'a, f32>;
+    type O<'a> = <MultiChannelBus<C> as Bus<[f32; C]>>::I<'a>;
 
-// impl<const C: usize, D> Bus for IntoMonoBus<C, D>
-// where
-//     for<'a> D: FnMut([f32; C]) -> f32 + 'static + Copy + Clone,
-// {
-//     type Input = f32;
-//     type InputIter<'a> = slice::Iter<'a, f32>;
-//     type Output = [f32; C];
-//     type OutputIter<'a> = slice::Iter<'a, [f32; C]>;
+    fn register_dispatcher<F: for<'a> Fn(Self::I<'a>) + Sync + Send + 'static>(
+        &self,
+        dispatcher: F,
+    ) -> Arc<dyn for<'a> Fn(Self::O<'a>) + Sync + Send> {
+        self.bus.register_dispatcher(move |samples| {
+            let mono_samples = samples.map(|x| x.into_iter().sum::<f32>() / C as f32);
+        })
+    }
 
-//     fn set_sample_rate(&self, sample_rate: f32) {
-//         self.sample_rate.store(sample_rate, Ordering::Relaxed);
-//     }
+    fn update(&self) {
+        self.bus.update()
+    }
 
-//     fn sample_rate(&self) -> f32 {
-//         self.sample_rate.load(Ordering::Relaxed)
-//     }
+    #[inline]
+    fn set_sample_rate(&self, sample_rate: f32) {
+        self.bus.set_sample_rate(sample_rate)
+    }
 
-//     fn update(&self) {
-//         // TODO
-//     }
-
-//     fn register_dispatcher<F>(&self, action: F) -> Rc<dyn for<'a> Fn(Self::OutputIter<'a>)>
-//     where
-//         F: for<'a> Fn(Self::InputIter<'a>) + 'static,
-//     {
-//         let mut downmix = self.downmixer.clone();
-
-//         let dispatcher: Rc<dyn for<'a> Fn(Self::OutputIter<'a>)> = Rc::new(move |data| {
-//             let mapped = data.copied().map(move |x| downmix(x)).collect::<Vec<_>>();
-//             action(mapped.iter())
-//         });
-
-//         self.dispatchers
-//             .write()
-//             .unwrap()
-//             .push(Rc::downgrade(&dispatcher));
-
-//         dispatcher
-//     }
-// }
+    #[inline]
+    fn sample_rate(&self) -> f32 {
+        self.bus.sample_rate()
+    }
+}

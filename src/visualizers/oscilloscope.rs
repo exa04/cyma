@@ -3,8 +3,9 @@ use std::sync::{Arc, Mutex};
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use super::RangeModifiers;
-use crate::utils::{
-    accumulators::sample_delta, MonoChannel, MonoChannelConsumer, RingBuffer, ValueScaling,
+use crate::{
+    bus::Bus,
+    utils::{accumulators::sample_delta, RingBuffer, ValueScaling},
 };
 
 #[derive(Default, Copy, Clone)]
@@ -83,8 +84,9 @@ impl WaveformAccumulator {
     }
 }
 
-pub struct Oscilloscope {
-    consumer: Arc<Mutex<MonoChannelConsumer>>,
+pub struct Oscilloscope<B: Bus<f32> + 'static> {
+    bus: Arc<B>,
+    dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
     accumulator: Arc<Mutex<WaveformAccumulator>>,
     buffer: Arc<Mutex<RingBuffer<Sample>>>,
     range: (f32, f32),
@@ -96,22 +98,42 @@ enum OscilloscopeEvents {
     UpdateScaling(ValueScaling),
 }
 
-impl Oscilloscope {
-    pub fn new(
+impl<B: Bus<f32> + 'static> Oscilloscope<B> {
+    pub fn new<L>(
         cx: &mut Context,
+        bus: L,
         duration: f32,
         range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
-        channel: MonoChannel,
-    ) -> Handle<Self> {
-        let consumer = channel.get_consumer();
+    ) -> Handle<Self>
+    where
+        L: Lens<Target = Arc<B>>,
+    {
+        let bus = bus.get(cx);
+
         let mut accumulator = WaveformAccumulator::new(duration);
-        accumulator.set_sample_rate(consumer.get_sample_rate());
+        accumulator.set_sample_rate(bus.sample_rate());
+        let accumulator = Arc::new(Mutex::new(accumulator));
+        let accumulator_c = accumulator.clone();
+
+        let buffer: Arc<Mutex<RingBuffer<Sample>>> = Default::default();
+        let buffer_c = buffer.clone();
+
+        let dispatcher_handle = bus.register_dispatcher(move |samples| {
+            if let (Ok(mut buf), Ok(mut acc)) = (buffer_c.lock(), accumulator_c.lock()) {
+                for sample in samples {
+                    if let Some(sample) = acc.accumulate(*sample) {
+                        buf.enqueue(sample);
+                    }
+                }
+            }
+        });
 
         Self {
-            consumer: Arc::new(Mutex::new(consumer)),
-            accumulator: Arc::new(Mutex::new(accumulator)),
-            buffer: Arc::new(Mutex::new(RingBuffer::new(1))),
+            bus,
+            dispatcher_handle,
+            accumulator,
+            buffer,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
         }
@@ -121,7 +143,7 @@ impl Oscilloscope {
     }
 }
 
-impl View for Oscilloscope {
+impl<B: Bus<f32> + 'static> View for Oscilloscope<B> {
     fn element(&self) -> Option<&'static str> {
         Some("oscilloscope")
     }
@@ -134,6 +156,7 @@ impl View for Oscilloscope {
         let h = bounds.h;
 
         let ring_buf = &mut self.buffer.lock().unwrap();
+
         {
             let mut acc = self.accumulator.lock().unwrap();
 
@@ -142,15 +165,9 @@ impl View for Oscilloscope {
                 ring_buf.resize(width_ceil);
                 acc.set_size(width_ceil);
             }
-
-            let mut consumer = self.consumer.lock().unwrap();
-
-            while let Some(sample) = consumer.receive() {
-                if let Some(sample) = acc.accumulate(sample) {
-                    ring_buf.enqueue(sample);
-                }
-            }
         }
+
+        let len = ring_buf.len();
 
         let mut fill = vg::Path::new();
 
@@ -159,7 +176,7 @@ impl View for Oscilloscope {
             .scaling
             .value_to_normalized(ring_buf[0].min, self.range.0, self.range.1);
         fill.move_to(x, y + h * (1. - py) + 1.);
-        for i in 1..ring_buf.len() {
+        for i in 1..len {
             py = self
                 .scaling
                 .value_to_normalized(ring_buf[i].min, self.range.0, self.range.1);
@@ -168,20 +185,16 @@ impl View for Oscilloscope {
         }
 
         // Local maxima (top part of waveform)
-        py = self.scaling.value_to_normalized(
-            ring_buf[ring_buf.len() - 1].max,
-            self.range.0,
-            self.range.1,
-        );
+        py = self
+            .scaling
+            .value_to_normalized(ring_buf[len - 1].max, self.range.0, self.range.1);
         fill.line_to(x + w, y + h * (1. - py) + 1.);
-        for i in 1..ring_buf.len() {
-            py = self.scaling.value_to_normalized(
-                ring_buf[ring_buf.len() - i].max,
-                self.range.0,
-                self.range.1,
-            );
+        for i in 1..len {
+            py =
+                self.scaling
+                    .value_to_normalized(ring_buf[len - i].max, self.range.0, self.range.1);
 
-            fill.line_to(x + w - i as f32, y + h * (1. - py) + 1.);
+            fill.line_to(x + len as f32 - i as f32, y + h * (1. - py) + 1.);
         }
 
         fill.close();
@@ -198,7 +211,7 @@ impl View for Oscilloscope {
     }
 }
 
-impl<'a> RangeModifiers for Handle<'a, Oscilloscope> {
+impl<'a, B: Bus<f32> + 'static> RangeModifiers for Handle<'a, Oscilloscope<B>> {
     fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
         let e = self.entity();
 
