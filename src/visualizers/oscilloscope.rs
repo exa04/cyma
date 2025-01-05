@@ -181,7 +181,7 @@ impl<B: Bus<f32> + 'static> View for Oscilloscope<B> {
                 .scaling
                 .value_to_normalized(ring_buf[i].min, self.range.0, self.range.1);
 
-            fill.line_to(x + i as f32, y + h * (1. - py) + 1.);
+            fill.line_to(x + i as f32, y + h * (1. - py) + cx.scale_factor());
         }
 
         // Local maxima (top part of waveform)
@@ -194,7 +194,7 @@ impl<B: Bus<f32> + 'static> View for Oscilloscope<B> {
                 self.scaling
                     .value_to_normalized(ring_buf[len - i].max, self.range.0, self.range.1);
 
-            fill.line_to(x + len as f32 - i as f32, y + h * (1. - py) + 1.);
+            fill.line_to(x + len as f32 - i as f32, y + h * (1. - py));
         }
 
         fill.close();

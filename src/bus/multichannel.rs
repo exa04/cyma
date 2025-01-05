@@ -1,6 +1,7 @@
 use core::slice;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use nih_plug::buffer::Buffer;
+use nih_plug::nih_dbg;
 use nih_plug::prelude::AtomicF32;
 use std::sync::atomic::Ordering;
 use std::sync::{atomic, Arc, RwLock, Weak};
@@ -33,7 +34,7 @@ impl<const C: usize> Default for MultiChannelBus<C> {
 
 impl<const C: usize> MultiChannelBus<C> {
     #[inline]
-    pub fn send_buffer(&mut self, buffer: &mut Buffer) {
+    pub fn send_buffer(&self, buffer: &mut Buffer) {
         for mut x in buffer.iter_samples() {
             let mut array = [0.0; C];
 
@@ -45,6 +46,7 @@ impl<const C: usize> MultiChannelBus<C> {
                 }
             }
 
+            nih_dbg!(&array);
             self.send(array);
         }
     }
@@ -54,28 +56,28 @@ impl<const C: usize> MultiChannelBus<C> {
         self.channel.0.try_send(value);
     }
 
-    pub fn into_mono<D>(self, downmixer: D) -> IntoMonoBus<C, D>
-    where
-        for<'a> D: Fn([f32; C]) -> f32 + 'static + Copy + Clone,
-    {
-        IntoMonoBus {
-            bus: self,
-            downmixer,
-        }
-    }
+    // pub fn into_mono<D>(self, downmixer: D) -> IntoMonoBus<C, D>
+    // where
+    //     for<'a> D: Fn([f32; C]) -> f32 + 'static + Copy + Clone,
+    // {
+    //     IntoMonoBus {
+    //         bus: self,
+    //         downmixer,
+    //     }
+    // }
 
-    pub fn into_mono_summing<D>(
-        self,
-    ) -> IntoMonoBus<C, impl Fn([f32; C]) -> f32 + 'static + Copy + Clone> {
-        self.into_mono(|sample| sample.into_iter().sum::<f32>() / C as f32)
-    }
+    // pub fn into_mono_summing(
+    //     self,
+    // ) -> IntoMonoBus<C, impl Fn([f32; C]) -> f32 + 'static + Copy + Clone> {
+    //     self.into_mono(|sample| sample.into_iter().sum::<f32>() / C as f32)
+    // }
 
-    pub fn into_mono_from_channel_index<D>(
-        self,
-        channel: usize,
-    ) -> IntoMonoBus<C, impl Fn([f32; C]) -> f32 + 'static + Copy + Clone> {
-        self.into_mono(move |sample| sample[channel])
-    }
+    // pub fn into_mono_from_channel_index(
+    //     self,
+    //     channel: usize,
+    // ) -> IntoMonoBus<C, impl Fn([f32; C]) -> f32 + 'static + Copy + Clone> {
+    //     self.into_mono(move |sample| sample[channel])
+    // }
 }
 
 impl<const C: usize> Bus<[f32; C]> for MultiChannelBus<C> {
@@ -88,10 +90,16 @@ impl<const C: usize> Bus<[f32; C]> for MultiChannelBus<C> {
     ) -> Arc<dyn for<'a> Fn(Self::I<'a>) + Sync + Send> {
         let dispatcher: Arc<dyn for<'a> Fn(Self::I<'a>) + Sync + Send> = Arc::new(dispatcher);
 
-        self.dispatchers
-            .write()
-            .unwrap()
-            .push(Arc::downgrade(&dispatcher));
+        let downgraded = Arc::downgrade(&dispatcher);
+
+        let mut dispatchers = self.dispatchers.write().unwrap();
+
+        if let Some(pos) = dispatchers.iter().position(|d| d.upgrade().is_none()) {
+            dispatchers[pos] = downgraded;
+            dispatchers.retain(|d| d.upgrade().is_some());
+        } else {
+            dispatchers.push(downgraded);
+        }
 
         dispatcher
     }

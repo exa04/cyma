@@ -51,8 +51,6 @@ impl<B: Bus<f32> + 'static> Histogram<B> {
             let decay_weight = state_c.decay_weight.load(Ordering::Relaxed);
             let total_decay_weight = decay_weight.powi(samples.len() as i32);
 
-            nih_dbg!(&decay_weight);
-
             for i in 0..state_c.size.load(Ordering::Relaxed) - 1 {
                 state_c.data[i]
                     .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |sample| {
@@ -61,39 +59,37 @@ impl<B: Bus<f32> + 'static> Histogram<B> {
                     .unwrap();
             }
 
-            let his = samples
-                .map(|sample| {
-                    let bin_index = {
-                        let value = sample.abs();
-                        if value < state_c.edges[0].load(Ordering::Relaxed) {
-                            0
+            for sample in samples {
+                state_c.data[{
+                    let value = sample.abs();
+                    if value < state_c.edges[0].load(Ordering::Relaxed) {
+                        0
+                    } else {
+                        let size = state_c.size.load(Ordering::Relaxed);
+
+                        // Check if the value is larger than the last edge
+                        if value > state_c.edges[size - 1].load(Ordering::Relaxed) {
+                            state_c.edges.len()
                         } else {
-                            let size = state_c.size.load(Ordering::Relaxed);
+                            // Binary search to find the bin for the given value
+                            let mut left = 0;
+                            let mut right = size - 1;
 
-                            // Check if the value is larger than the last edge
-                            if value > state_c.edges[size - 1].load(Ordering::Relaxed) {
-                                state_c.edges.len()
-                            } else {
-                                // Binary search to find the bin for the given value
-                                let mut left = 0;
-                                let mut right = size - 1;
-
-                                while left <= right {
-                                    let mid = left + (right - left) / 2;
-                                    if value >= state_c.edges[mid].load(Ordering::Relaxed) {
-                                        left = mid + 1;
-                                    } else {
-                                        right = mid - 1;
-                                    }
+                            while left <= right {
+                                let mid = left + (right - left) / 2;
+                                if value >= state_c.edges[mid].load(Ordering::Relaxed) {
+                                    left = mid + 1;
+                                } else {
+                                    right = mid - 1;
                                 }
-                                // Return the bin index
-                                left
                             }
+                            // Return the bin index
+                            left
                         }
-                    };
-                    state_c.data[bin_index].fetch_add(1.0 - decay_weight, Ordering::Relaxed)
-                })
-                .collect::<Vec<_>>();
+                    }
+                }]
+                .fetch_add(1.0 - decay_weight, Ordering::Relaxed);
+            }
         });
 
         Self {
@@ -108,8 +104,6 @@ impl<B: Bus<f32> + 'static> Histogram<B> {
 
     fn update(&self) {
         let size: usize = self.state.size.load(Ordering::Relaxed);
-
-        nih_dbg!(&size);
 
         (0..size).for_each(|x| {
             let scaled = self.range.0 + (x as f32 / size as f32) * (self.range.1 - self.range.0);
@@ -164,6 +158,7 @@ impl<B: Bus<f32> + 'static> View for Histogram<B> {
             .data
             .iter()
             .take(nr_bins)
+            .skip(1)
             .map(|x| x.load(Ordering::Relaxed))
             .max_by(|a, b| a.partial_cmp(b).unwrap())
             .unwrap_or_default();
@@ -174,12 +169,6 @@ impl<B: Bus<f32> + 'static> View for Histogram<B> {
         );
 
         if largest > 0.0 {
-            nih_dbg!(self
-                .state
-                .data
-                .iter()
-                .map(|x| x.load(Ordering::Relaxed))
-                .collect::<Vec<f32>>());
             for i in 0..nr_bins {
                 stroke.line_to(
                     x + (self.state.data[nr_bins - i].load(Ordering::Relaxed) / largest) * w,

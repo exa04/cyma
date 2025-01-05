@@ -8,6 +8,7 @@ mod editor;
 pub struct VisualizersPlugin {
     params: Arc<DemoParams>,
     bus: Arc<MonoBus>,
+    stereo_bus: Arc<StereoBus>,
 }
 
 #[derive(Params)]
@@ -20,7 +21,8 @@ impl Default for VisualizersPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            bus: MonoBus::default().into(),
+            bus: Default::default(),
+            stereo_bus: Default::default(),
         }
     }
 }
@@ -64,7 +66,7 @@ impl Plugin for VisualizersPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(self.bus.clone()),
+            editor::Data::new(self.bus.clone(), self.stereo_bus.clone()),
             self.params.editor_state.clone(),
         )
     }
@@ -76,6 +78,7 @@ impl Plugin for VisualizersPlugin {
         _context: &mut impl InitContext<Self>,
     ) -> bool {
         self.bus.set_sample_rate(buffer_config.sample_rate);
+        self.stereo_bus.set_sample_rate(buffer_config.sample_rate);
         true
     }
 
@@ -87,6 +90,7 @@ impl Plugin for VisualizersPlugin {
     ) -> ProcessStatus {
         if self.params.editor_state.is_open() {
             self.bus.send_buffer_summing(buffer);
+            self.stereo_bus.send_buffer(buffer);
         }
         ProcessStatus::Normal
     }

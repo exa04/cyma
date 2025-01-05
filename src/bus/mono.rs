@@ -88,11 +88,16 @@ impl Bus<f32> for MonoBus {
         dispatcher: F,
     ) -> Arc<dyn for<'a> Fn(Self::I<'a>) + Sync + Send> {
         let dispatcher: Arc<dyn for<'a> Fn(Self::I<'a>) + Sync + Send> = Arc::new(dispatcher);
+        let downgraded = Arc::downgrade(&dispatcher);
 
-        self.dispatchers
-            .write()
-            .unwrap()
-            .push(Arc::downgrade(&dispatcher));
+        let mut dispatchers = self.dispatchers.write().unwrap();
+
+        if let Some(pos) = dispatchers.iter().position(|d| d.upgrade().is_none()) {
+            dispatchers[pos] = downgraded;
+            dispatchers.retain(|d| d.upgrade().is_some());
+        } else {
+            dispatchers.push(downgraded);
+        }
 
         dispatcher
     }
