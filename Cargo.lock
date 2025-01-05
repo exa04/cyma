@@ -2722,6 +2722,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
+name = "peak_graph"
+version = "0.1.0"
+dependencies = [
+ "cyma",
+ "nih_plug",
+ "nih_plug_vizia",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
