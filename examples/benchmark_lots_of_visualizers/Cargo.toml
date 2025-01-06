@@ -1,5 +1,5 @@
 [package]
-name = "benchmark-lots-of-visualizers"
+name = "benchmark_lots_of_visualizers"
 version = "0.1.0"
 edition = "2021"
 description = "Lots of peak graphs"

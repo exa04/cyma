@@ -10,7 +10,7 @@ members = [
     "xtask",
     "examples/visualizers",
     "examples/peak_graph",
-    "examples/benchmark-lots-of-visualizers"
+    "examples/benchmark_lots_of_visualizers"
 ]
 
 [lib]
