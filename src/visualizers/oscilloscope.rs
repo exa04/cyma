@@ -155,14 +155,15 @@ impl<B: Bus<f32> + 'static> View for Oscilloscope<B> {
         let w = bounds.w;
         let h = bounds.h;
 
+        self.bus.update();
+
         let ring_buf = &mut self.buffer.lock().unwrap();
 
         {
-            let mut acc = self.accumulator.lock().unwrap();
-
             let width_ceil = w.ceil() as usize;
             if ring_buf.len() != width_ceil {
                 ring_buf.resize(width_ceil);
+                let mut acc = self.accumulator.lock().unwrap();
                 acc.set_size(width_ceil);
             }
         }
