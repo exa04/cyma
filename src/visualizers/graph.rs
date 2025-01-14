@@ -1,6 +1,6 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::bus::Bus;
 use crate::accumulators::*;
+use crate::bus::Bus;
 use crate::utils::{RingBuffer, ValueScaling};
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
