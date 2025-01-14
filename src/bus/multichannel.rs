@@ -46,38 +46,45 @@ impl<const C: usize> MultiChannelBus<C> {
                 }
             }
 
-            nih_dbg!(&array);
             self.send(array);
         }
     }
 
     #[inline]
     pub fn send(&self, value: [f32; C]) {
-        self.channel.0.try_send(value);
+        let _ = self.channel.0.try_send(value);
     }
 
-    // pub fn into_mono<D>(self, downmixer: D) -> IntoMonoBus<C, D>
-    // where
-    //     for<'a> D: Fn([f32; C]) -> f32 + 'static + Copy + Clone,
-    // {
-    //     IntoMonoBus {
-    //         bus: self,
-    //         downmixer,
-    //     }
-    // }
+    pub fn into_mono<D>(&self, downmixer: D) -> Arc<IntoMonoBus<C, D>>
+    where
+        for<'a> D: Fn(&'a [f32; C]) -> &'a f32 + 'static + Copy + Clone + Send + Sync,
+    {
+        IntoMonoBus {
+            bus: self.clone(),
+            downmixer,
+        }
+        .into()
+    }
 
-    // pub fn into_mono_summing(
-    //     self,
-    // ) -> IntoMonoBus<C, impl Fn([f32; C]) -> f32 + 'static + Copy + Clone> {
-    //     self.into_mono(|sample| sample.into_iter().sum::<f32>() / C as f32)
-    // }
+    pub fn into_mono_summing(
+        &self,
+    ) -> Arc<IntoMonoBus<C, impl Fn(&[f32; C]) -> &f32 + 'static + Copy + Clone + Send + Sync>>
+    {
+        fn downmixer<'a, const C: usize>(sample: &'a [f32; C]) -> &'a f32 {
+            &sample[0]
+        }
+        self.into_mono(downmixer::<C>)
+    }
 
-    // pub fn into_mono_from_channel_index(
-    //     self,
-    //     channel: usize,
-    // ) -> IntoMonoBus<C, impl Fn([f32; C]) -> f32 + 'static + Copy + Clone> {
-    //     self.into_mono(move |sample| sample[channel])
-    // }
+    pub fn into_mono_from_channel<const CI: usize>(
+        &self,
+    ) -> Arc<IntoMonoBus<C, impl Fn(&[f32; C]) -> &f32 + 'static + Copy + Clone + Send + Sync>>
+    {
+        fn downmixer<'a, const C: usize, const CI: usize>(sample: &'a [f32; C]) -> &'a f32 {
+            &sample[CI]
+        }
+        self.into_mono(downmixer::<C, CI>)
+    }
 }
 
 impl<const C: usize> Bus<[f32; C]> for MultiChannelBus<C> {

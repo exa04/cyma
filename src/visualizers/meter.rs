@@ -19,19 +19,14 @@ pub struct Meter<B: Bus<f32> + 'static, A: Accumulator + 'static> {
 }
 
 impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Meter<B, A> {
-    pub fn with_accumulator<L>(
+    pub fn with_accumulator(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         mut accumulator: A,
         range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
         orientation: Orientation,
-    ) -> Handle<Self>
-    where
-        L: Lens<Target = Arc<B>>,
-    {
-        let bus = bus.get(cx);
-
+    ) -> Handle<Self> {
         accumulator.set_sample_rate(bus.sample_rate());
         accumulator.set_size(bus.sample_rate() as usize);
 
@@ -215,9 +210,9 @@ impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
 }
 
 impl<B: Bus<f32> + 'static> Meter<B, PeakAccumulator> {
-    pub fn peak<L: Lens<Target = Arc<B>>>(
+    pub fn peak(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
@@ -234,9 +229,9 @@ impl<B: Bus<f32> + 'static> Meter<B, PeakAccumulator> {
     }
 }
 impl<B: Bus<f32> + 'static> Meter<B, MinimumAccumulator> {
-    pub fn minima<L: Lens<Target = Arc<B>>>(
+    pub fn minima(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
@@ -253,9 +248,9 @@ impl<B: Bus<f32> + 'static> Meter<B, MinimumAccumulator> {
     }
 }
 impl<B: Bus<f32> + 'static> Meter<B, RMSAccumulator> {
-    pub fn rms<L: Lens<Target = Arc<B>>>(
+    pub fn rms(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         window_size: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,

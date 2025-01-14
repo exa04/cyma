@@ -4,28 +4,17 @@ use nih_plug_vizia::widgets::ResizeHandle;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
 use std::sync::Arc;
 
-#[derive(Lens, Clone)]
-pub(crate) struct Data {
-    bus: Arc<MonoBus>,
-    stereo_bus: Arc<StereoBus>,
-}
-
-impl Data {
-    pub(crate) fn new(bus: Arc<MonoBus>, stereo_bus: Arc<StereoBus>) -> Self {
-        Self { bus, stereo_bus }
-    }
-}
-
-impl Model for Data {}
-
 pub(crate) fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (1200, 800))
 }
 
-pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
+pub(crate) fn create(
+    bus: Arc<MonoBus>,
+    stereo_bus: Arc<StereoBus>,
+    editor_state: Arc<ViziaState>,
+) -> Option<Box<dyn Editor>> {
     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
         assets::register_noto_sans_light(cx);
-        editor_data.clone().build(cx);
         VStack::new(cx, |cx| {
             HStack::new(cx, |cx| {
                 ZStack::new(cx, |cx| {
@@ -40,7 +29,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                     .color(Color::rgb(30, 30, 30));
                     Graph::peak(
                         cx,
-                        Data::bus,
+                        bus.clone(),
                         10.0,
                         50.0,
                         (-32.0, 8.0),
@@ -50,14 +39,14 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                     .background_color(Color::rgba(255, 255, 255, 30));
                     Graph::rms(
                         cx,
-                        Data::bus,
+                        bus.clone(),
                         10.0,
                         250.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
                     )
                     .color(Color::rgba(255, 92, 92, 128));
-                    Histogram::new(cx, Data::bus, 250.0, (-32.0, 8.0), ValueScaling::Decibels)
+                    Histogram::new(cx, bus.clone(), 250.0, (-32.0, 8.0), ValueScaling::Decibels)
                         .width(Pixels(64.0))
                         .color(Color::rgba(64, 128, 255, 64))
                         .background_color(Color::rgba(64, 128, 255, 32));
@@ -84,7 +73,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                 ZStack::new(cx, |cx| {
                     Meter::rms(
                         cx,
-                        Data::bus,
+                        bus.clone(),
                         800.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
@@ -93,7 +82,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                     .background_color(Color::rgba(255, 92, 92, 50));
                     Meter::peak(
                         cx,
-                        Data::bus,
+                        bus.clone(),
                         400.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
@@ -102,7 +91,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                     .background_color(Color::rgba(255, 255, 255, 30));
                     Meter::peak(
                         cx,
-                        Data::bus,
+                        bus.clone(),
                         800.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
@@ -122,15 +111,15 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                     LissajousGrid::new(cx)
                         .background_color(Color::rgb(16, 16, 16))
                         .color(Color::rgb(48, 48, 48));
-                    Lissajous::new(cx, Data::stereo_bus, 2048)
+                    Lissajous::new(cx, stereo_bus.clone(), 2048)
                         .color(Color::rgba(255, 255, 255, 40));
                 })
                 .width(Pixels(200.0))
                 .background_color(Color::rgb(16, 16, 16))
                 .border_width(Pixels(1.0))
                 .border_color(Color::rgb(48, 48, 48));
-                ZStack::new(cx, |cx| {
-                    Oscilloscope::new(cx, Data::bus, 4.0, (-1.0, 1.0), ValueScaling::Linear)
+                VStack::new(cx, |cx| {
+                    Oscilloscope::new(cx, bus.clone(), 4.0, (-1.0, 1.0), ValueScaling::Linear)
                         .color(Color::rgba(255, 255, 255, 120));
                 })
                 .background_color(Color::rgb(16, 16, 16))

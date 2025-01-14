@@ -4,27 +4,13 @@ use nih_plug::editor::Editor;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
 use std::sync::Arc;
 
-#[derive(Lens, Clone)]
-pub(crate) struct Data {
-    bus: Arc<MonoBus>,
-}
-
-impl Data {
-    pub(crate) fn new(bus: Arc<MonoBus>) -> Self {
-        Self { bus }
-    }
-}
-
-impl Model for Data {}
-
 pub(crate) fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (800, 500))
 }
 
-pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
+pub(crate) fn create(editor_state: Arc<ViziaState>, bus: Arc<MonoBus>) -> Option<Box<dyn Editor>> {
     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
         assets::register_noto_sans_light(cx);
-        editor_data.clone().build(cx);
 
         HStack::new(cx, |cx| {
             ZStack::new(cx, |cx| {
@@ -39,7 +25,7 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
 
                 Graph::peak(
                     cx,
-                    Data::bus,
+                    bus.clone(),
                     10.0,
                     50.0,
                     (-32.0, 8.0),

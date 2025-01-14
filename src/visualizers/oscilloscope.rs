@@ -99,18 +99,13 @@ enum OscilloscopeEvents {
 }
 
 impl<B: Bus<f32> + 'static> Oscilloscope<B> {
-    pub fn new<L>(
+    pub fn new(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         duration: f32,
         range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
-    ) -> Handle<Self>
-    where
-        L: Lens<Target = Arc<B>>,
-    {
-        let bus = bus.get(cx);
-
+    ) -> Handle<Self> {
         let mut accumulator = WaveformAccumulator::new(duration);
         accumulator.set_sample_rate(bus.sample_rate());
         let accumulator = Arc::new(Mutex::new(accumulator));

@@ -21,18 +21,13 @@ enum GraphEvents {
 }
 
 impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
-    pub fn with_accumulator<L>(
+    pub fn with_accumulator(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         mut accumulator: A,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-    ) -> Handle<Self>
-    where
-        L: Lens<Target = Arc<B>>,
-    {
-        let bus = bus.get(cx);
-
+    ) -> Handle<Self> {
         accumulator.set_sample_rate(bus.sample_rate());
 
         let buffer: Arc<Mutex<RingBuffer<f32>>> = Default::default();
@@ -186,17 +181,14 @@ impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
 }
 
 impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
-    pub fn peak<L>(
+    pub fn peak(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         duration: f32,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-    ) -> Handle<Self>
-    where
-        L: Lens<Target = Arc<B>>,
-    {
+    ) -> Handle<Self> {
         Self::with_accumulator(
             cx,
             bus,
@@ -207,17 +199,14 @@ impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
     }
 }
 impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
-    pub fn minima<L>(
+    pub fn minima(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         duration: f32,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-    ) -> Handle<Self>
-    where
-        L: Lens<Target = Arc<B>>,
-    {
+    ) -> Handle<Self> {
         Self::with_accumulator(
             cx,
             bus,
@@ -228,17 +217,14 @@ impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
     }
 }
 impl<B: Bus<f32> + 'static> Graph<B, RMSAccumulator> {
-    pub fn rms<L>(
+    pub fn rms(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         duration: f32,
         window_size: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
-    ) -> Handle<Self>
-    where
-        L: Lens<Target = Arc<B>>,
-    {
+    ) -> Handle<Self> {
         Self::with_accumulator(
             cx,
             bus,

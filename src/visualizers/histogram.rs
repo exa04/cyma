@@ -26,15 +26,13 @@ pub struct Histogram<B: Bus<f32> + 'static> {
 }
 
 impl<B: Bus<f32> + 'static> Histogram<B> {
-    pub fn new<L: Lens<Target = Arc<B>>>(
+    pub fn new(
         cx: &mut Context,
-        bus: L,
+        bus: Arc<B>,
         decay: f32,
         range: (f32, f32),
         scaling: ValueScaling,
     ) -> Handle<Self> {
-        let bus = bus.get(cx);
-
         let state: Arc<_> = HistogramState {
             data: [0f32; 2048].map(|x| x.into()),
             edges: [0f32; 2047].map(|x| x.into()),

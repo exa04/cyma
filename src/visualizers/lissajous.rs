@@ -38,12 +38,7 @@ pub struct Lissajous<B: Bus<Sample> + 'static> {
 }
 
 impl<B: Bus<Sample> + 'static> Lissajous<B> {
-    pub fn new<L: Lens<Target = Arc<B>>>(
-        cx: &mut Context,
-        bus: L,
-        duration: usize,
-    ) -> Handle<Self> {
-        let bus = bus.get(cx);
+    pub fn new(cx: &mut Context, bus: Arc<B>, duration: usize) -> Handle<Self> {
         let buffer = Arc::new(Mutex::new(RingBuffer::<Sample>::new(duration)));
         let buffer_c = buffer.clone();
 

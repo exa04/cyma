@@ -66,7 +66,8 @@ impl Plugin for VisualizersPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(self.bus.clone(), self.stereo_bus.clone()),
+            self.bus.clone(),
+            self.stereo_bus.clone(),
             self.params.editor_state.clone(),
         )
     }

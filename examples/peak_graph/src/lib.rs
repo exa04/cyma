@@ -63,10 +63,7 @@ impl Plugin for PeakGraphPlugin {
     }
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        editor::create(
-            editor::Data::new(self.bus.clone()),
-            self.params.editor_state.clone(),
-        )
+        editor::create(self.params.editor_state.clone(), self.bus.clone())
     }
 
     fn initialize(
