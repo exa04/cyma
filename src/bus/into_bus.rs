@@ -38,10 +38,6 @@ where
         self.bus.set_sample_rate(sample_rate)
     }
 
-    fn is_empty(&self) -> bool {
-        self.bus.is_empty()
-    }
-
     #[inline]
     fn sample_rate(&self) -> f32 {
         self.bus.sample_rate()

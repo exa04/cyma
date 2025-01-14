@@ -26,7 +26,6 @@ where
         &self,
         dispatcher: F,
     ) -> Arc<dyn for<'a> Fn(Self::O<'a>) + Send + Sync>;
-    fn is_empty(&self) -> bool;
 
     fn subscribe(self: &Arc<Self>, cx: &mut Context) {
         let bus = self.clone();

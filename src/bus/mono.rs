@@ -84,10 +84,6 @@ impl Bus<f32> for MonoBus {
             .for_each(|d| d(samples.iter()));
     }
 
-    fn is_empty(&self) -> bool {
-        self.channel.1.is_empty()
-    }
-
     fn register_dispatcher<F: for<'a> Fn(Self::I<'a>) + Sync + Send + 'static>(
         &self,
         dispatcher: F,
