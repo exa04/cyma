@@ -1,6 +1,5 @@
 use crate::bus::Bus;
 use crate::utils::ValueScaling;
-use nih_plug::nih_dbg;
 use nih_plug::prelude::AtomicF32;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -18,7 +17,6 @@ struct HistogramState {
 }
 
 pub struct Histogram<B: Bus<f32> + 'static> {
-    bus: Arc<B>,
     dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
     state: Arc<HistogramState>,
     range: (f32, f32),
@@ -91,7 +89,6 @@ impl<B: Bus<f32> + 'static> Histogram<B> {
         });
 
         Self {
-            bus,
             dispatcher_handle,
             state,
             range,
@@ -137,8 +134,6 @@ impl<B: Bus<f32> + 'static> View for Histogram<B> {
         let w = bounds.w;
         let h = bounds.h;
         let h_ceil = bounds.h.ceil() as usize;
-
-        self.bus.update();
 
         let mut stroke = vg::Path::new();
         let size = self.state.size.load(Ordering::Relaxed);

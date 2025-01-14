@@ -8,7 +8,7 @@ mod meter;
 mod oscilloscope;
 mod spectrum_analyzer;
 mod unit_ruler;
-mod waveform;
+// mod waveform;
 
 pub use graph::*;
 pub use grid::*;
@@ -18,7 +18,7 @@ pub use meter::*;
 pub use oscilloscope::*;
 pub use spectrum_analyzer::*;
 pub use unit_ruler::*;
-pub use waveform::*;
+// pub use waveform::*;
 
 use super::utils::ValueScaling;
 use nih_plug_vizia::vizia::binding::Res;

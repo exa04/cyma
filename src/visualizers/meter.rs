@@ -9,7 +9,6 @@ use crate::utils::ValueScaling;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
 pub struct Meter<B: Bus<f32> + 'static, A: Accumulator + 'static> {
-    bus: Arc<B>,
     dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
     accumulator: Arc<Mutex<A>>,
     range: (f32, f32),
@@ -42,7 +41,6 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Meter<B, A> {
         });
 
         Self {
-            bus,
             dispatcher_handle,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
@@ -72,8 +70,6 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> View for Meter<B, A> {
         let y = bounds.y;
         let w = bounds.w;
         let h = bounds.h;
-
-        self.bus.update();
 
         let sample = self.accumulator.lock().unwrap().prev();
 

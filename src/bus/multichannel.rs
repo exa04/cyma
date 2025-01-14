@@ -112,11 +112,11 @@ impl<const C: usize> Bus<[f32; C]> for MultiChannelBus<C> {
     }
 
     fn update(&self) {
-        let samples = self.channel.1.try_iter().collect::<Vec<_>>();
-
-        if samples.is_empty() {
+        if self.channel.1.is_empty() {
             return;
         }
+
+        let samples = self.channel.1.try_iter().collect::<Vec<_>>();
 
         self.dispatchers
             .read()
@@ -124,6 +124,10 @@ impl<const C: usize> Bus<[f32; C]> for MultiChannelBus<C> {
             .iter()
             .filter_map(|d| d.upgrade())
             .for_each(|d| d(samples.iter()));
+    }
+
+    fn is_empty(&self) -> bool {
+        self.channel.1.is_empty()
     }
 
     fn set_sample_rate(&self, sample_rate: f32) {

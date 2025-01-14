@@ -33,7 +33,6 @@ type Sample = [f32; 2];
 /// [Wikipedia entry](https://en.wikipedia.org/wiki/Lissajous_curve) on them.
 pub struct Lissajous<B: Bus<Sample> + 'static> {
     buffer: Arc<Mutex<RingBuffer<Sample>>>,
-    bus: Arc<B>,
     dispatcher: Arc<dyn Fn(<B as Bus<[f32; 2]>>::O<'_>) + Send + Sync>,
 }
 
@@ -50,12 +49,7 @@ impl<B: Bus<Sample> + 'static> Lissajous<B> {
             }
         });
 
-        Self {
-            bus,
-            buffer,
-            dispatcher,
-        }
-        .build(cx, |_| {})
+        Self { buffer, dispatcher }.build(cx, |_| {})
     }
 }
 
@@ -70,8 +64,6 @@ impl<B: Bus<Sample> + 'static> View for Lissajous<B> {
         let y = bounds.y;
         let w = bounds.w;
         let h = bounds.h;
-
-        self.bus.update();
 
         let ring_buf = &(self.buffer.lock().unwrap());
 

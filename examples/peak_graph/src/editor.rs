@@ -1,6 +1,7 @@
 use cyma::prelude::*;
 use cyma::visualizers::{Graph, Grid, UnitRuler};
 use nih_plug::editor::Editor;
+use nih_plug::nih_dbg;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
 use std::sync::Arc;
 
@@ -8,9 +9,18 @@ pub(crate) fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (800, 500))
 }
 
+#[derive(Lens)]
+struct TimerState {
+    timer: Timer,
+}
+
+impl Model for TimerState {}
+
 pub(crate) fn create(editor_state: Arc<ViziaState>, bus: Arc<MonoBus>) -> Option<Box<dyn Editor>> {
     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
         assets::register_noto_sans_light(cx);
+
+        bus.subscribe(cx);
 
         HStack::new(cx, |cx| {
             ZStack::new(cx, |cx| {

@@ -14,6 +14,9 @@ pub(crate) fn create(
     editor_state: Arc<ViziaState>,
 ) -> Option<Box<dyn Editor>> {
     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
+        bus.subscribe(cx);
+        stereo_bus.subscribe(cx);
+
         assets::register_noto_sans_light(cx);
         VStack::new(cx, |cx| {
             HStack::new(cx, |cx| {

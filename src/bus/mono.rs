@@ -1,6 +1,7 @@
 use core::slice;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use nih_plug::buffer::Buffer;
+use nih_plug::nih_dbg;
 use nih_plug::prelude::AtomicF32;
 use std::sync::atomic::Ordering;
 use std::sync::{atomic, Arc, RwLock, Weak};
@@ -69,11 +70,11 @@ impl Bus<f32> for MonoBus {
     }
 
     fn update(&self) {
-        let samples = self.channel.1.try_iter().collect::<Vec<_>>();
-
-        if samples.is_empty() {
+        if self.channel.1.is_empty() {
             return;
         }
+
+        let samples = self.channel.1.try_iter().collect::<Vec<_>>();
 
         self.dispatchers
             .read()
@@ -81,6 +82,10 @@ impl Bus<f32> for MonoBus {
             .iter()
             .filter_map(|d| d.upgrade())
             .for_each(|d| d(samples.iter()));
+    }
+
+    fn is_empty(&self) -> bool {
+        self.channel.1.is_empty()
     }
 
     fn register_dispatcher<F: for<'a> Fn(Self::I<'a>) + Sync + Send + 'static>(

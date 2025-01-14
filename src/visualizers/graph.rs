@@ -6,7 +6,6 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
 
 pub struct Graph<B: Bus<f32> + 'static, A: Accumulator + 'static> {
-    bus: Arc<B>,
     buffer: Arc<Mutex<RingBuffer<f32>>>,
     range: (f32, f32),
     scaling: ValueScaling,
@@ -47,7 +46,6 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
         });
 
         Self {
-            bus,
             buffer,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
@@ -81,8 +79,6 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
         let line_width = cx.scale_factor();
 
         // Update buffer
-
-        self.bus.update();
 
         let ring_buf = &mut (self.buffer.lock().unwrap());
 
