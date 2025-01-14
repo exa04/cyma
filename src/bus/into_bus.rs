@@ -2,6 +2,10 @@ use std::{iter::Map, sync::Arc};
 
 use super::*;
 
+/// Thinly wraps around a [`MultiChannelBus`] and acts like a mono bus.
+///
+/// Also contains a downmixing function which is called on the incoming audio to
+/// allow for dispatchers to work with the audio as if it were mono.
 #[derive(Clone)]
 pub struct IntoMonoBus<const C: usize, D>
 where

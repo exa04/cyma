@@ -8,6 +8,7 @@ use std::sync::{atomic, Arc, RwLock, Weak};
 
 use super::*;
 
+/// A bus for mono data.
 #[derive(Clone)]
 pub struct MonoBus {
     dispatchers: Arc<RwLock<Vec<Weak<dyn Fn(slice::Iter<'_, f32>) + Sync + Send>>>>,
@@ -33,6 +34,10 @@ impl Default for MonoBus {
 }
 
 impl MonoBus {
+    /// Sends the latest audio data.
+    ///
+    /// The audio data will be summed, if it is multichannel. This operation will
+    /// silently fail if the Bus is congested.
     #[inline]
     pub fn send_buffer_summing(&self, buffer: &mut Buffer) {
         let channels = buffer.channels();
@@ -48,13 +53,14 @@ impl MonoBus {
         }
     }
 
+    /// Sends a single sample.
+    ///
+    /// This operation will silently fail if the Bus is congested.
     #[inline]
     pub fn send(&self, value: f32) {
         self.channel.0.try_send(value);
     }
 }
-
-// TODO Cleanup automatically
 
 impl Bus<f32> for MonoBus {
     type I<'a> = slice::Iter<'a, f32>;

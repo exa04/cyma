@@ -19,8 +19,6 @@ lazy_static! {
 
 type Sample = [f32; 2];
 
-// L: Lens<Target = Arc<Mutex<RingBuffer<(f32, f32)>>>>,
-
 /// Lissajous for stereo audio data.
 ///
 /// The further points are from the horizontal middle, the more stereo your signal
@@ -37,6 +35,7 @@ pub struct Lissajous<B: Bus<Sample> + 'static> {
 }
 
 impl<B: Bus<Sample> + 'static> Lissajous<B> {
+    /// Creates a new [`Lissajous`].
     pub fn new(cx: &mut Context, bus: Arc<B>, duration: usize) -> Handle<Self> {
         let buffer = Arc::new(Mutex::new(RingBuffer::<Sample>::new(duration)));
         let buffer_c = buffer.clone();

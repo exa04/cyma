@@ -3,9 +3,10 @@ use std::sync::{Arc, Mutex};
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use super::RangeModifiers;
+use crate::accumulators::sample_delta;
 use crate::{
     bus::Bus,
-    utils::{accumulators::sample_delta, RingBuffer, ValueScaling},
+    utils::{RingBuffer, ValueScaling},
 };
 
 #[derive(Default, Copy, Clone)]
@@ -19,7 +20,7 @@ const MAXED: Sample = Sample {
     max: f32::MIN,
 };
 
-pub struct WaveformAccumulator {
+struct WaveformAccumulator {
     /// Maximum accumulator
     acc: Sample,
     size: usize,
@@ -84,6 +85,7 @@ impl WaveformAccumulator {
     }
 }
 
+/// Displays the incoming signal as a waveform.
 pub struct Oscilloscope<B: Bus<f32> + 'static> {
     bus: Arc<B>,
     dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
@@ -99,6 +101,7 @@ enum OscilloscopeEvents {
 }
 
 impl<B: Bus<f32> + 'static> Oscilloscope<B> {
+    /// Creates a new Oscilloscope displaying the last `duration` seconds of audio.
     pub fn new(
         cx: &mut Context,
         bus: Arc<B>,

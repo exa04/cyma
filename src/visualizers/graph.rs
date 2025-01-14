@@ -1,10 +1,20 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::bus::Bus;
-use crate::utils::accumulators::{MinimumAccumulator, PeakAccumulator, RMSAccumulator};
-use crate::utils::{accumulators::Accumulator, RingBuffer, ValueScaling};
+use crate::accumulators::*;
+use crate::utils::{RingBuffer, ValueScaling};
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
 
+/// A graph visualizer plotting a value over time.
+///
+/// Can display different types of information about a signal:
+///
+///    - [`peak`](Self::peak) - Its peak amplitude
+///    - [`minima`](Self::minima) - Its minimal amplitude
+///    - [`rms`](Self::rms) - Its root mean squared level
+///
+/// It's also possible to define your own [`Accumulator`] in order to display some
+/// other information about the incoming signal.
 pub struct Graph<B: Bus<f32> + 'static, A: Accumulator + 'static> {
     buffer: Arc<Mutex<RingBuffer<f32>>>,
     range: (f32, f32),
@@ -20,6 +30,7 @@ enum GraphEvents {
 }
 
 impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
+    /// Creates a new [`Graph`] which uses the provided [`Accumulator`].
     pub fn with_accumulator(
         cx: &mut Context,
         bus: Arc<B>,
@@ -177,6 +188,24 @@ impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
 }
 
 impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
+    /// Creates a peak graph.
+    ///
+    /// # Example
+    ///
+    /// 10-second peak graph with a 50ms-long decay for each peak.
+    ///
+    /// ```
+    /// Graph::peak(
+    ///     cx,
+    ///     bus.clone(),
+    ///     10.0,
+    ///     50.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    /// )
+    /// .color(Color::rgba(255, 255, 255, 60))
+    /// .background_color(Color::rgba(255, 255, 255, 30));
+    /// ```
     pub fn peak(
         cx: &mut Context,
         bus: Arc<B>,
@@ -195,6 +224,26 @@ impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
     }
 }
 impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
+    /// Creates a minima graph.
+    ///
+    /// This may be useful for gain reduction graphs.
+    ///
+    /// ## Example
+    ///
+    /// 50-second minima graph with a 50ms-long decay for each minimum.
+    ///
+    /// ```
+    /// Graph::minima(
+    ///     cx,
+    ///     gain_reduction_bus.clone(),
+    ///     10.0,
+    ///     50.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    /// )
+    /// .color(Color::rgba(255, 255, 255, 60))
+    /// .background_color(Color::rgba(255, 255, 255, 30));
+    /// ```
     pub fn minima(
         cx: &mut Context,
         bus: Arc<B>,
@@ -213,6 +262,23 @@ impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
     }
 }
 impl<B: Bus<f32> + 'static> Graph<B, RMSAccumulator> {
+    /// Creates a graph showing the root mean squared level over time.
+    ///
+    /// ## Example
+    ///
+    /// 10-second RMS graph showing the RMS level over a 250 ms long window.
+    ///
+    /// ```
+    /// Graph::rms(
+    ///     cx,
+    ///     bus.clone(),
+    ///     10.0,
+    ///     250.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    /// )
+    /// .color(Color::rgba(255, 92, 92, 128));
+    /// ```
     pub fn rms(
         cx: &mut Context,
         bus: Arc<B>,

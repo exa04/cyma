@@ -76,8 +76,8 @@ impl<T: Default + Copy> RingBuffer<T> {
 
     /// Resizes the buffer to the given size.
     ///
-    /// Internally, this either calls [`shrink()`](`Buffer::shrink()`), or
-    /// [`grow()`](`Buffer::grow()`), depending on the desired size.
+    /// Internally, this either calls [`shrink()`](`Self::shrink()`), or
+    /// [`grow()`](`Self::grow()`), depending on the desired size.
     pub fn resize(self: &mut Self, size: usize) {
         if size == self.len() {
             return;

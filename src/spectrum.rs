@@ -17,6 +17,8 @@
 // This module is adapted from nih-plug's Diopser plug-in, some modifications
 // were made.
 
+//! Necessary for processing and sending spectral information to the [`SpectrumAnalyzer`](crate::visualizers::SpectrumAnalyzer).
+
 use nih_plug::prelude::*;
 use nih_plug::util::window::multiply_with_window;
 use realfft::num_complex::Complex32;

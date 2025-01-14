@@ -1,3 +1,5 @@
+//! Represent metrics that can be gathered from incoming audio.
+
 use crate::utils::RingBuffer;
 
 pub trait Accumulator: Sync + Send {
@@ -17,6 +19,7 @@ pub fn decay_weight(decay: f32, size: usize, duration: f32) -> f32 {
     0.25f64.powf((decay as f64 / 1000. * (size as f64 / duration as f64)).recip()) as f32
 }
 
+/// Stores the latest peak.
 pub struct PeakAccumulator {
     /// Maximum accumulator
     max_acc: f32,
@@ -99,6 +102,7 @@ impl Accumulator for PeakAccumulator {
     }
 }
 
+/// Stores the latest minimum.
 pub struct MinimumAccumulator {
     /// Maximum accumulator
     min_acc: f32,
@@ -181,6 +185,7 @@ impl Accumulator for MinimumAccumulator {
     }
 }
 
+/// Stores the latest root mean square value.
 pub struct RMSAccumulator {
     duration: f32,
     rms_window: f32,

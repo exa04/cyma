@@ -8,6 +8,7 @@ use std::sync::{atomic, Arc, RwLock, Weak};
 
 use super::*;
 
+/// A bus for multi-channel data.
 #[derive(Clone)]
 pub struct MultiChannelBus<const C: usize> {
     dispatchers: Arc<RwLock<Vec<Weak<dyn Fn(slice::Iter<'_, [f32; C]>) + Sync + Send>>>>,
@@ -33,6 +34,9 @@ impl<const C: usize> Default for MultiChannelBus<C> {
 }
 
 impl<const C: usize> MultiChannelBus<C> {
+    /// Sends the latest audio data.
+    ///
+    /// This operation will silently fail if the Bus is congested.
     #[inline]
     pub fn send_buffer(&self, buffer: &mut Buffer) {
         for mut x in buffer.iter_samples() {
@@ -50,11 +54,17 @@ impl<const C: usize> MultiChannelBus<C> {
         }
     }
 
+    /// Sends a single sample.
+    ///
+    /// This operation will silently fail if the Bus is congested.
     #[inline]
     pub fn send(&self, value: [f32; C]) {
         let _ = self.channel.0.try_send(value);
     }
 
+    /// Creates a mono bus, given a downmixer.
+    ///
+    /// See [`IntoMonoBus`].
     pub fn into_mono<D>(&self, downmixer: D) -> Arc<IntoMonoBus<C, D>>
     where
         for<'a> D: Fn(&'a [f32; C]) -> &'a f32 + 'static + Copy + Clone + Send + Sync,
@@ -66,15 +76,22 @@ impl<const C: usize> MultiChannelBus<C> {
         .into()
     }
 
-    pub fn into_mono_summing(
-        &self,
-    ) -> Arc<IntoMonoBus<C, impl Fn(&[f32; C]) -> &f32 + 'static + Copy + Clone + Send + Sync>>
-    {
-        fn downmixer<'a, const C: usize>(sample: &'a [f32; C]) -> &'a f32 {
-            &sample[0]
-        }
-        self.into_mono(downmixer::<C>)
-    }
+    // /// Creates a mono bus, by summing samples.
+    // ///
+    // /// See [`IntoMonoBus`].
+    // pub fn into_mono_summing(
+    //     &self,
+    // ) -> Arc<IntoMonoBus<C, impl Fn(&[f32; C]) -> &f32 + 'static + Copy + Clone + Send + Sync>>
+    // {
+    //     fn downmixer<'a, const C: usize>(sample: &'a [f32; C]) -> &'a f32 {
+    //         let mut x = 0.0f32;
+    //         for s in sample {
+    //             x += s;
+    //         }
+    //         &x
+    //     }
+    //     self.into_mono(downmixer::<C>)
+    // }
 
     pub fn into_mono_from_channel<const CI: usize>(
         &self,

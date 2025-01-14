@@ -16,6 +16,7 @@ struct HistogramState {
     decay_weight: AtomicF32,
 }
 
+/// A histogram plot of the most frequent levels in a signal.
 pub struct Histogram<B: Bus<f32> + 'static> {
     dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
     state: Arc<HistogramState>,
@@ -24,6 +25,7 @@ pub struct Histogram<B: Bus<f32> + 'static> {
 }
 
 impl<B: Bus<f32> + 'static> Histogram<B> {
+    /// Creates a new [`Histogram`].
     pub fn new(
         cx: &mut Context,
         bus: Arc<B>,
