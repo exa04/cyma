@@ -1,7 +1,7 @@
 use cyma::prelude::*;
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 mod editor;
 
@@ -9,6 +9,8 @@ pub struct VisualizersPlugin {
     params: Arc<DemoParams>,
     bus: Arc<MonoBus>,
     stereo_bus: Arc<StereoBus>,
+    spectrum_input: SpectrumInput,
+    spectrum_output: Arc<Mutex<SpectrumOutput>>,
 }
 
 #[derive(Params)]
@@ -19,10 +21,15 @@ struct DemoParams {
 
 impl Default for VisualizersPlugin {
     fn default() -> Self {
+        let (spectrum_input, spectrum_output) = SpectrumInput::new(2, 100.);
+
         Self {
             params: Arc::new(DemoParams::default()),
             bus: Default::default(),
             stereo_bus: Default::default(),
+
+            spectrum_input,
+            spectrum_output: Arc::new(Mutex::new(spectrum_output)),
         }
     }
 }
@@ -67,6 +74,9 @@ impl Plugin for VisualizersPlugin {
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
             self.bus.clone(),
+            editor::Data {
+                spectrum: self.spectrum_output.clone(),
+            },
             self.stereo_bus.clone(),
             self.params.editor_state.clone(),
         )
@@ -80,6 +90,9 @@ impl Plugin for VisualizersPlugin {
     ) -> bool {
         self.bus.set_sample_rate(buffer_config.sample_rate);
         self.stereo_bus.set_sample_rate(buffer_config.sample_rate);
+        self.spectrum_input
+            .update_sample_rate(buffer_config.sample_rate);
+
         true
     }
 
@@ -92,6 +105,7 @@ impl Plugin for VisualizersPlugin {
         if self.params.editor_state.is_open() {
             self.bus.send_buffer_summing(buffer);
             self.stereo_bus.send_buffer(buffer);
+            self.spectrum_input.compute(buffer);
         }
         ProcessStatus::Normal
     }

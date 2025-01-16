@@ -2,7 +2,14 @@ use cyma::prelude::*;
 use nih_plug::editor::Editor;
 use nih_plug_vizia::widgets::ResizeHandle;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+
+#[derive(Lens, Clone)]
+pub(crate) struct Data {
+    pub(crate) spectrum: Arc<Mutex<SpectrumOutput>>,
+}
+
+impl Model for Data {}
 
 pub(crate) fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (1200, 800))
@@ -10,6 +17,7 @@ pub(crate) fn default_state() -> Arc<ViziaState> {
 
 pub(crate) fn create(
     bus: Arc<MonoBus>,
+    editor_data: Data,
     stereo_bus: Arc<StereoBus>,
     editor_state: Arc<ViziaState>,
 ) -> Option<Box<dyn Editor>> {
@@ -17,7 +25,10 @@ pub(crate) fn create(
         bus.subscribe(cx);
         stereo_bus.subscribe(cx);
 
+        editor_data.clone().build(cx);
+
         assets::register_noto_sans_light(cx);
+
         VStack::new(cx, |cx| {
             HStack::new(cx, |cx| {
                 ZStack::new(cx, |cx| {
@@ -122,7 +133,7 @@ pub(crate) fn create(
                 .border_width(Pixels(1.0))
                 .border_color(Color::rgb(48, 48, 48));
                 VStack::new(cx, |cx| {
-                    Oscilloscope::new(cx, bus.clone(), 4.0, (-1.0, 1.0), ValueScaling::Linear)
+                    Oscilloscope::new(cx, bus.clone(), 0.25, (-1.0, 1.0), ValueScaling::Linear)
                         .color(Color::rgba(255, 255, 255, 120));
                 })
                 .background_color(Color::rgb(16, 16, 16))
@@ -130,6 +141,77 @@ pub(crate) fn create(
                 .border_color(Color::rgb(48, 48, 48));
             })
             .col_between(Pixels(4.0))
+            .height(Pixels(200.0));
+
+            ZStack::new(cx, |cx| {
+                Grid::new(
+                    cx,
+                    ValueScaling::Frequency,
+                    (10., 21_000.),
+                    vec![
+                        20., 40., 30., 50., 60., 70., 80., 90., 100., 200., 300., 400., 500., 600.,
+                        700., 800., 900., 1_000., 2_000., 3_000., 4_000., 5_000., 6_000., 7_000.,
+                        8_000., 9_000., 10_000., 20_000.,
+                    ],
+                    Orientation::Vertical,
+                )
+                .border_width(Pixels(0.5))
+                .color(Color::rgb(30, 30, 30));
+                Grid::new(
+                    cx,
+                    ValueScaling::Linear,
+                    (-80., 6.),
+                    vec![0., -10., -20., -30., -40., -50., -60., -70.],
+                    Orientation::Horizontal,
+                )
+                .border_width(Pixels(0.5))
+                .color(Color::rgb(30, 30, 30));
+                SpectrumAnalyzer::new(
+                    cx,
+                    Data::spectrum,
+                    SpectrumAnalyzerVariant::LINE,
+                    ValueScaling::Frequency,
+                    (10., 21_000.),
+                    ValueScaling::Decibels,
+                    (-110., 6.),
+                )
+                .with_slope(4.5)
+                .color(Color::rgba(255, 255, 255, 60))
+                .background_color(Color::rgba(255, 255, 255, 30));
+                Element::new(cx)
+                    .background_gradient(
+                        LinearGradientBuilder::with_direction("to bottom")
+                            .add_stop(Color::transparent())
+                            .add_stop(Color::rgb(16, 16, 16)),
+                    )
+                    .height(Pixels(48.))
+                    .top(Stretch(1.));
+                UnitRuler::new(
+                    cx,
+                    (10., 21_000.),
+                    ValueScaling::Frequency,
+                    vec![
+                        (20., "20"),
+                        (50., "50"),
+                        (100., "100"),
+                        (200., "200"),
+                        (500., "500"),
+                        (1_000., "1k"),
+                        (2_000., "2k"),
+                        (5_000., "5k"),
+                        (10_000., "10k"),
+                    ],
+                    Orientation::Horizontal,
+                )
+                .height(Pixels(16.))
+                .font_size(12.)
+                .color(Color::rgb(160, 160, 160))
+                .top(Stretch(1.))
+                .bottom(Pixels(4.));
+            })
+            .background_color(Color::rgb(16, 16, 16))
+            .border_width(Pixels(1.0))
+            .border_color(Color::rgb(48, 48, 48))
             .height(Pixels(200.0));
 
             Label::new(
