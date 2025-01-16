@@ -1,8 +1,8 @@
 [package]
-name = "histogram"
+name = "benchmark_lots_of_visualizers"
 version = "0.1.0"
 edition = "2021"
-description = "A histogram built using Cyma"
+description = "Lots of peak graphs"
 
 [lib]
 crate-type = ["cdylib", "lib"]

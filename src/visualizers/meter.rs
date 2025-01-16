@@ -1,59 +1,61 @@
 use std::sync::{Arc, Mutex};
 
+use super::{FillFrom, FillModifiers, RangeModifiers};
+use crate::accumulators::*;
+use crate::bus::Bus;
+use crate::utils::ValueScaling;
 use nih_plug_vizia::vizia::{prelude::*, vg};
 
-use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::utils::ValueScaling;
-use crate::utils::VisualizerBuffer;
-
-/// Meter that displays the data inside a [`VisualizerBuffer`].
+/// Displays some metric as a bar.
 ///
-/// Useful for peak meters, loudness meters, etc.
+/// Can display different types of information about a signal:
 ///
-/// # Example
+///    - [`peak`](Self::peak) - Its peak amplitude
+///    - [`minima`](Self::minima) - Its minimal amplitude
+///    - [`rms`](Self::rms) - Its root mean squared level
 ///
-/// ```
-/// Meter::new(
-///     cx,
-///     Data::peak_buffer,
-///     (-32.0, 8.0),
-///     ValueScaling::Decibels,
-///     Orientation::Vertical,
-/// )
-/// .width(Pixels(24.0))
-/// .height(Pixels(128.0))
-/// .background_color(Color::rgb(100, 100, 100));
-/// ```
-pub struct Meter<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
-    buffer: L,
+/// It's also possible to define your own [`Accumulator`] in order to display some
+/// other information about the incoming signal.
+pub struct Meter<B: Bus<f32> + 'static, A: Accumulator + 'static> {
+    dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
+    accumulator: Arc<Mutex<A>>,
     range: (f32, f32),
     scaling: ValueScaling,
     fill_from: FillFrom,
     orientation: Orientation,
 }
 
-impl<L, I> Meter<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
-    pub fn new(
+impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Meter<B, A> {
+    /// Creates a new [`Meter`] which uses the provided [`Accumulator`].
+    pub fn with_accumulator(
         cx: &mut Context,
-        buffer: L,
+        bus: Arc<B>,
+        mut accumulator: A,
         range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
         orientation: Orientation,
     ) -> Handle<Self> {
+        accumulator.set_sample_rate(bus.sample_rate());
+        accumulator.set_size(bus.sample_rate() as usize);
+
+        let accumulator = Arc::new(Mutex::new(accumulator));
+        let accumulator_c = accumulator.clone();
+
+        let dispatcher_handle = bus.register_dispatcher(move |samples| {
+            if let Ok(mut acc) = accumulator_c.lock() {
+                for sample in samples {
+                    let _ = acc.accumulate(*sample);
+                }
+            }
+        });
+
         Self {
-            buffer,
+            dispatcher_handle,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
             fill_from: FillFrom::Bottom,
             orientation,
+            accumulator,
         }
         .build(cx, |_| {})
         .range(range)
@@ -66,11 +68,7 @@ enum MeterEvents {
     UpdateScaling(ValueScaling),
 }
 
-impl<L, I> View for Meter<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
+impl<B: Bus<f32> + 'static, A: Accumulator + 'static> View for Meter<B, A> {
     fn element(&self) -> Option<&'static str> {
         Some("meter")
     }
@@ -82,14 +80,11 @@ where
         let w = bounds.w;
         let h = bounds.h;
 
-        let binding = self.buffer.get(cx);
-        let ring_buf = &(binding.lock().unwrap());
+        let sample = self.accumulator.lock().unwrap().prev();
 
-        let level = self.scaling.value_to_normalized(
-            ring_buf[ring_buf.len() - 1],
-            self.range.0,
-            self.range.1,
-        );
+        let level = self
+            .scaling
+            .value_to_normalized(sample, self.range.0, self.range.1);
 
         let mut path = vg::Path::new();
         match self.orientation {
@@ -97,8 +92,7 @@ where
                 path.move_to(x, y + h * (1. - level));
                 path.line_to(x + w, y + h * (1. - level));
 
-                let mut outline = path.clone();
-                outline.close();
+                let outline = path.clone();
                 canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
 
                 let fill_from_n = match self.fill_from {
@@ -123,8 +117,7 @@ where
                 path.move_to(x + w * level, y);
                 path.line_to(x + w * level, y + h);
 
-                let mut outline = path.clone();
-                outline.close();
+                let outline = path.clone();
                 canvas.fill_path(&outline, &vg::Paint::color(cx.font_color().into()));
 
                 let fill_from_n = match self.fill_from {
@@ -151,27 +144,12 @@ where
     }
 }
 
-impl<'a, L, I> FillModifiers for Handle<'a, Meter<L, I>>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> FillModifiers
+    for Handle<'a, Meter<B, A>>
 {
     /// Allows for the meter to be filled from the maximum instead of the minimum value.
     ///
     /// This is useful for certain meters like gain reduction meters.
-    ///
-    /// # Example
-    ///
-    /// Here's a gain reduction meter, which you could overlay on top of a peak meter.
-    ///
-    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
-    ///
-    /// ```
-    /// Meter::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels, Orientation::Vertical)
-    ///     .fill_from_max()
-    ///     .color(Color::rgba(255, 0, 0, 160))
-    ///     .background_color(Color::rgba(255, 0, 0, 60));
-    /// ```
     fn fill_from_max(self) -> Self {
         self.modify(|meter| {
             meter.fill_from = FillFrom::Top;
@@ -180,19 +158,6 @@ where
     /// Allows for the meter to be filled from any desired level.
     ///
     /// This is useful for certain meters like gain reduction meters.
-    ///
-    /// # Example
-    ///
-    /// Here's a gain reduction meter, which you could overlay on top of a peak meter.
-    ///
-    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
-    ///
-    /// ```
-    /// Meter::new(cx, Data::gain_mult, (-32.0, 6.0), ValueScaling::Decibels, Orientation::Vertical)
-    ///     .fill_from(0.0) // Fills the meter from 0.0dB downwards
-    ///     .color(Color::rgba(255, 0, 0, 160))
-    ///     .background_color(Color::rgba(255, 0, 0, 60));
-    /// ```
     fn fill_from_value(self, level: f32) -> Self {
         self.modify(|meter| {
             meter.fill_from = FillFrom::Value(level);
@@ -200,10 +165,8 @@ where
     }
 }
 
-impl<'a, L, I> RangeModifiers for Handle<'a, Meter<L, I>>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
+    for Handle<'a, Meter<B, A>>
 {
     fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
         let e = self.entity();
@@ -222,5 +185,118 @@ where
         });
 
         self
+    }
+}
+
+impl<B: Bus<f32> + 'static> Meter<B, PeakAccumulator> {
+    /// Creates a peak meter.
+    ///
+    /// # Example
+    ///
+    /// Peak meter with a 50ms-long decay for each peak.
+    ///
+    /// ```
+    /// Meter::peak(
+    ///     cx,
+    ///     bus.clone(),
+    ///     50.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    ///     Orientation::Vertical,
+    /// )
+    /// .color(Color::rgba(255, 255, 255, 60))
+    /// .background_color(Color::rgba(255, 255, 255, 30));
+    /// ```
+    pub fn peak(
+        cx: &mut Context,
+        bus: Arc<B>,
+        decay: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+        orientation: Orientation,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            bus,
+            PeakAccumulator::new(1.0, decay),
+            range,
+            scaling,
+            orientation,
+        )
+    }
+}
+impl<B: Bus<f32> + 'static> Meter<B, MinimumAccumulator> {
+    /// Creates a peak meter.
+    ///
+    /// # Example
+    ///
+    /// Peak meter with a 50ms-long decay for each peak.
+    ///
+    /// This may be useful for gain reduction meters.
+    ///
+    /// ```
+    /// Meter::minima(
+    ///     cx,
+    ///     bus.clone(),
+    ///     50.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    ///     Orientation::Vertical,
+    /// )
+    /// .color(Color::rgba(255, 255, 255, 60))
+    /// ```
+    pub fn minima(
+        cx: &mut Context,
+        bus: Arc<B>,
+        decay: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+        orientation: Orientation,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            bus,
+            MinimumAccumulator::new(1.0, decay),
+            range,
+            scaling,
+            orientation,
+        )
+    }
+}
+impl<B: Bus<f32> + 'static> Meter<B, RMSAccumulator> {
+    /// Creates an RMS meter.
+    ///
+    /// # Example
+    ///
+    /// 10-second RMS meter showing the RMS level over a 250 ms long window.
+    ///
+    /// ```
+    /// Graph::rms(
+    ///     cx,
+    ///     bus.clone(),
+    ///     250.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    ///     Orientation::Vertical,
+    /// )
+    /// .color(Color::rgba(255, 255, 255, 60))
+    /// .background_color(Color::rgba(255, 255, 255, 30));
+    /// ```
+    pub fn rms(
+        cx: &mut Context,
+        bus: Arc<B>,
+        window_size: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+        orientation: Orientation,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            bus,
+            RMSAccumulator::new(1.0, window_size),
+            range,
+            scaling,
+            orientation,
+        )
     }
 }

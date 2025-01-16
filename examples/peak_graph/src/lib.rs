@@ -1,5 +1,4 @@
 use cyma::prelude::*;
-use cyma::utils::PeakBuffer;
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
 use std::sync::{Arc, Mutex};
@@ -8,7 +7,7 @@ mod editor;
 
 pub struct PeakGraphPlugin {
     params: Arc<DemoParams>,
-    peak_buffer: Arc<Mutex<PeakBuffer>>,
+    bus: Arc<MonoBus>,
 }
 
 #[derive(Params)]
@@ -21,7 +20,7 @@ impl Default for PeakGraphPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            peak_buffer: Arc::new(Mutex::new(PeakBuffer::new(800, 10.0, 50.0))),
+            bus: Arc::new(Default::default()),
         }
     }
 }
@@ -64,10 +63,7 @@ impl Plugin for PeakGraphPlugin {
     }
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
-        editor::create(
-            editor::Data::new(self.peak_buffer.clone()),
-            self.params.editor_state.clone(),
-        )
+        editor::create(self.params.editor_state.clone(), self.bus.clone())
     }
 
     fn initialize(
@@ -76,12 +72,7 @@ impl Plugin for PeakGraphPlugin {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
-        match self.peak_buffer.lock() {
-            Ok(mut buffer) => {
-                buffer.set_sample_rate(buffer_config.sample_rate);
-            }
-            Err(_) => return false,
-        }
+        self.bus.set_sample_rate(buffer_config.sample_rate);
 
         true
     }
@@ -92,12 +83,9 @@ impl Plugin for PeakGraphPlugin {
         _: &mut AuxiliaryBuffers,
         _: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
-        // Append to the visualizers' respective buffers, only if the editor is currently open.
+        // Push samples into the bus, only if the editor is currently open.
         if self.params.editor_state.is_open() {
-            self.peak_buffer
-                .lock()
-                .unwrap()
-                .enqueue_buffer(buffer, None);
+            self.bus.send_buffer_summing(buffer);
         }
         ProcessStatus::Normal
     }

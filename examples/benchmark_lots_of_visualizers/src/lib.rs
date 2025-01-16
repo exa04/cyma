@@ -1,14 +1,13 @@
 use cyma::prelude::*;
-use cyma::utils::HistogramBuffer;
 use nih_plug::prelude::*;
 use nih_plug_vizia::ViziaState;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 mod editor;
 
-pub struct HistogramPlugin {
+pub struct VisualizersPlugin {
     params: Arc<DemoParams>,
-    histogram_buffer: Arc<Mutex<HistogramBuffer>>,
+    bus: Arc<MonoBus>,
 }
 
 #[derive(Params)]
@@ -17,11 +16,11 @@ struct DemoParams {
     editor_state: Arc<ViziaState>,
 }
 
-impl Default for HistogramPlugin {
+impl Default for VisualizersPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(DemoParams::default()),
-            histogram_buffer: Arc::new(Mutex::new(HistogramBuffer::new(256, 1.0))),
+            bus: Default::default(),
         }
     }
 }
@@ -34,8 +33,8 @@ impl Default for DemoParams {
     }
 }
 
-impl Plugin for HistogramPlugin {
-    const NAME: &'static str = "CymaHistogram";
+impl Plugin for VisualizersPlugin {
+    const NAME: &'static str = "Lots of Visualizers";
     const VENDOR: &'static str = "223230";
     const URL: &'static str = env!("CARGO_PKG_HOMEPAGE");
     const EMAIL: &'static str = "223230@pm.me";
@@ -65,7 +64,7 @@ impl Plugin for HistogramPlugin {
 
     fn editor(&mut self, _async_executor: AsyncExecutor<Self>) -> Option<Box<dyn Editor>> {
         editor::create(
-            editor::Data::new(self.histogram_buffer.clone()),
+            editor::Data::new(self.bus.clone()),
             self.params.editor_state.clone(),
         )
     }
@@ -76,36 +75,26 @@ impl Plugin for HistogramPlugin {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
-        match self.histogram_buffer.lock() {
-            Ok(mut buffer) => {
-                buffer.set_sample_rate(buffer_config.sample_rate);
-            }
-            Err(_) => return false,
-        }
-
+        self.bus.set_sample_rate(buffer_config.sample_rate);
         true
     }
 
     fn process(
         &mut self,
-        buffer: &mut nih_plug::buffer::Buffer,
+        buffer: &mut Buffer,
         _: &mut AuxiliaryBuffers,
         _: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
-        // Append to the visualizers' respective buffers, only if the editor is currently open.
         if self.params.editor_state.is_open() {
-            self.histogram_buffer
-                .lock()
-                .unwrap()
-                .enqueue_buffer(buffer, None);
+            self.bus.send_buffer_summing(buffer);
         }
         ProcessStatus::Normal
     }
 }
 
-impl ClapPlugin for HistogramPlugin {
-    const CLAP_ID: &'static str = "org.cyma.histogram";
-    const CLAP_DESCRIPTION: Option<&'static str> = Some("A histogram built using Cyma");
+impl ClapPlugin for VisualizersPlugin {
+    const CLAP_ID: &'static str = "org.cyma.visualizers";
+    const CLAP_DESCRIPTION: Option<&'static str> = Some("A huge load of visualizers");
     const CLAP_MANUAL_URL: Option<&'static str> = Some(Self::URL);
     const CLAP_SUPPORT_URL: Option<&'static str> = None;
 
@@ -113,11 +102,11 @@ impl ClapPlugin for HistogramPlugin {
         &[ClapFeature::AudioEffect, ClapFeature::Analyzer];
 }
 
-impl Vst3Plugin for HistogramPlugin {
-    const VST3_CLASS_ID: [u8; 16] = *b"CYMA000HISTOGRAM";
+impl Vst3Plugin for VisualizersPlugin {
+    const VST3_CLASS_ID: [u8; 16] = *b"Cyma_LotsOfVisua";
 
     const VST3_SUBCATEGORIES: &'static [Vst3SubCategory] = &[Vst3SubCategory::Analyzer];
 }
 
-nih_export_clap!(HistogramPlugin);
-nih_export_vst3!(HistogramPlugin);
+nih_export_clap!(VisualizersPlugin);
+nih_export_vst3!(VisualizersPlugin);

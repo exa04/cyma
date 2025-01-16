@@ -1,36 +1,27 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
-use crate::utils::{ValueScaling, VisualizerBuffer};
-
+use crate::accumulators::*;
+use crate::bus::Bus;
+use crate::utils::{RingBuffer, ValueScaling};
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
 
-/// Real-time graph displaying information that is stored inside a buffer
+/// A graph visualizer plotting a value over time.
 ///
-/// Use this view to construct peak graphs, loudness graphs, or any other graph that
-/// displays the data inside a [`VisualizerBuffer`].
+/// Can display different types of information about a signal:
 ///
-/// # Example
+///    - [`peak`](Self::peak) - Its peak amplitude
+///    - [`minima`](Self::minima) - Its minimal amplitude
+///    - [`rms`](Self::rms) - Its root mean squared level
 ///
-/// Here's how to set up a basic peak graph. For this example, you'll need a
-/// [`PeakBuffer`](crate::utils::PeakBuffer) to store your peak information.
-///
-/// ```
-/// Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
-///     .color(Color::rgba(0, 0, 0, 160))
-///     .background_color(Color::rgba(0, 0, 0, 60));
-/// ```
-///
-/// The graph displays the range from -32.0dB to 8dB. It scales the values as
-/// decibels, and a stroke and fill (background) color is provided.
-pub struct Graph<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32> + 'static,
-{
-    buffer: L,
+/// It's also possible to define your own [`Accumulator`] in order to display some
+/// other information about the incoming signal.
+pub struct Graph<B: Bus<f32> + 'static, A: Accumulator + 'static> {
+    buffer: Arc<Mutex<RingBuffer<f32>>>,
     range: (f32, f32),
     scaling: ValueScaling,
     fill_from: FillFrom,
+    accumulator: Arc<Mutex<A>>,
+    dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Sync + Send + 'static>,
 }
 
 enum GraphEvents {
@@ -38,34 +29,47 @@ enum GraphEvents {
     UpdateScaling(ValueScaling),
 }
 
-impl<L, I> Graph<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
-    pub fn new(
+impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
+    /// Creates a new [`Graph`] which uses the provided [`Accumulator`].
+    pub fn with_accumulator(
         cx: &mut Context,
-        buffer: L,
+        bus: Arc<B>,
+        mut accumulator: A,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
     ) -> Handle<Self> {
+        accumulator.set_sample_rate(bus.sample_rate());
+
+        let buffer: Arc<Mutex<RingBuffer<f32>>> = Default::default();
+        let buffer_c = buffer.clone();
+
+        let accumulator = Arc::new(Mutex::new(accumulator));
+        let accumulator_c = accumulator.clone();
+
+        let dispatcher_handle = bus.register_dispatcher(move |samples| {
+            if let (Ok(mut buf), Ok(mut acc)) = (buffer_c.lock(), accumulator_c.lock()) {
+                for sample in samples {
+                    if let Some(sample) = acc.accumulate(*sample) {
+                        buf.enqueue(sample);
+                    }
+                }
+            }
+        });
+
         Self {
             buffer,
             range: range.get_val(cx),
             scaling: scaling.get_val(cx),
             fill_from: FillFrom::Bottom,
+            accumulator,
+            dispatcher_handle,
         }
         .build(cx, |_| {})
         .range(range)
         .scaling(scaling)
     }
 }
-
-impl<L, I> View for Graph<L, I>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
-{
+impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
     fn element(&self) -> Option<&'static str> {
         Some("graph")
     }
@@ -85,13 +89,31 @@ where
 
         let line_width = cx.scale_factor();
 
-        let mut stroke = vg::Path::new();
-        let binding = self.buffer.get(cx);
-        let ring_buf = &(binding.lock().unwrap());
+        // Update buffer
+
+        let ring_buf = &mut (self.buffer.lock().unwrap());
+
+        {
+            let mut acc = self.accumulator.lock().unwrap();
+
+            let width_ceil = w.ceil() as usize;
+            if ring_buf.len() != width_ceil {
+                ring_buf.resize(width_ceil);
+                acc.set_size(width_ceil);
+            }
+        }
+
+        if ring_buf.len() == 0 {
+            return;
+        }
 
         let mut peak = self
             .scaling
             .value_to_normalized(ring_buf[0], self.range.0, self.range.1);
+
+        // Draw
+
+        let mut stroke = vg::Path::new();
 
         stroke.move_to(x, y + h * (1. - peak));
 
@@ -102,10 +124,7 @@ where
                 .value_to_normalized(ring_buf[i], self.range.0, self.range.1);
 
             // Draw peak as a new point
-            stroke.line_to(
-                x + (w / ring_buf.len() as f32) * i as f32,
-                y + h * (1. - peak),
-            );
+            stroke.line_to(x + i as f32, y + h * (1. - peak));
         }
 
         let mut fill = stroke.clone();
@@ -130,48 +149,14 @@ where
     }
 }
 
-impl<'a, L, I> FillModifiers for Handle<'a, Graph<L, I>>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> FillModifiers
+    for Handle<'a, Graph<B, A>>
 {
-    /// Allows for the graph to be filled from the top instead of the bottom.
-    ///
-    /// This is useful for certain graphs like gain reduction meters.
-    ///
-    /// # Example
-    ///
-    /// Here's a gain reduction graph, which you could overlay on top of a peak graph.
-    ///
-    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
-    ///
-    /// ```
-    /// Graph::new(cx, Data::gain_mult, (-32.0, 8.0), ValueScaling::Decibels)
-    ///     .fill_from_max()
-    ///     .color(Color::rgba(255, 0, 0, 160))
-    ///     .background_color(Color::rgba(255, 0, 0, 60));
-    /// ```
     fn fill_from_max(self) -> Self {
         self.modify(|graph| {
             graph.fill_from = FillFrom::Top;
         })
     }
-    /// Allows for the graph to be filled from any desired level.
-    ///
-    /// This is useful for certain graphs like gain reduction meters.
-    ///
-    /// # Example
-    ///
-    /// Here's a gain reduction graph, which you could overlay on top of a peak graph.
-    ///
-    /// Here, `gain_mult` could be a [`MinimaBuffer`](crate::utils::MinimaBuffer).
-    ///
-    /// ```
-    /// Graph::new(cx, Data::gain_mult, (-32.0, 6.0), ValueScaling::Decibels)
-    ///     .fill_from(0.0) // Fills the graph from 0.0dB downwards
-    ///     .color(Color::rgba(255, 0, 0, 160))
-    ///     .background_color(Color::rgba(255, 0, 0, 60));
-    /// ```
     fn fill_from_value(self, level: f32) -> Self {
         self.modify(|graph| {
             graph.fill_from = FillFrom::Value(level);
@@ -179,10 +164,8 @@ where
     }
 }
 
-impl<'a, L, I> RangeModifiers for Handle<'a, Graph<L, I>>
-where
-    L: Lens<Target = Arc<Mutex<I>>>,
-    I: VisualizerBuffer<f32, Output = f32> + 'static,
+impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
+    for Handle<'a, Graph<B, A>>
 {
     fn range(mut self, range: impl Res<(f32, f32)>) -> Self {
         let e = self.entity();
@@ -201,5 +184,115 @@ where
         });
 
         self
+    }
+}
+
+impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
+    /// Creates a peak graph.
+    ///
+    /// # Example
+    ///
+    /// 10-second peak graph with a 50ms-long decay for each peak.
+    ///
+    /// ```
+    /// Graph::peak(
+    ///     cx,
+    ///     bus.clone(),
+    ///     10.0,
+    ///     50.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    /// )
+    /// .color(Color::rgba(255, 255, 255, 60))
+    /// .background_color(Color::rgba(255, 255, 255, 30));
+    /// ```
+    pub fn peak(
+        cx: &mut Context,
+        bus: Arc<B>,
+        duration: f32,
+        decay: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            bus,
+            PeakAccumulator::new(duration, decay),
+            range,
+            scaling,
+        )
+    }
+}
+impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
+    /// Creates a minima graph.
+    ///
+    /// This may be useful for gain reduction graphs.
+    ///
+    /// ## Example
+    ///
+    /// 50-second minima graph with a 50ms-long decay for each minimum.
+    ///
+    /// ```
+    /// Graph::minima(
+    ///     cx,
+    ///     gain_reduction_bus.clone(),
+    ///     10.0,
+    ///     50.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    /// )
+    /// .color(Color::rgba(255, 255, 255, 60))
+    /// .background_color(Color::rgba(255, 255, 255, 30));
+    /// ```
+    pub fn minima(
+        cx: &mut Context,
+        bus: Arc<B>,
+        duration: f32,
+        decay: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            bus,
+            MinimumAccumulator::new(duration, decay),
+            range,
+            scaling,
+        )
+    }
+}
+impl<B: Bus<f32> + 'static> Graph<B, RMSAccumulator> {
+    /// Creates a graph showing the root mean squared level over time.
+    ///
+    /// ## Example
+    ///
+    /// 10-second RMS graph showing the RMS level over a 250 ms long window.
+    ///
+    /// ```
+    /// Graph::rms(
+    ///     cx,
+    ///     bus.clone(),
+    ///     10.0,
+    ///     250.0,
+    ///     (-32.0, 8.0),
+    ///     ValueScaling::Decibels,
+    /// )
+    /// .color(Color::rgba(255, 92, 92, 128));
+    /// ```
+    pub fn rms(
+        cx: &mut Context,
+        bus: Arc<B>,
+        duration: f32,
+        window_size: f32,
+        range: impl Res<(f32, f32)> + Clone,
+        scaling: impl Res<ValueScaling> + Clone,
+    ) -> Handle<Self> {
+        Self::with_accumulator(
+            cx,
+            bus,
+            RMSAccumulator::new(duration, window_size),
+            range,
+            scaling,
+        )
     }
 }

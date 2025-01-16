@@ -1,4 +1,4 @@
-use crate::utils::RingBuffer;
+use crate::{bus::Bus, utils::RingBuffer};
 
 use lazy_static::lazy_static;
 use nih_plug_vizia::vizia::{
@@ -12,12 +12,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-// These will be used to rotate the lissajous such that it is a straight
-// vertical line for mono data and a horizontal line for fully stereo data.
 lazy_static! {
     static ref TRANSLATE_SIN: f32 = (PI / 4.).sin();
     static ref TRANSLATE_COS: f32 = (PI / 4.).cos();
 }
+
+type Sample = [f32; 2];
 
 /// Lissajous for stereo audio data.
 ///
@@ -29,75 +29,30 @@ lazy_static! {
 ///
 /// For more information about lissajous curves, check out the
 /// [Wikipedia entry](https://en.wikipedia.org/wiki/Lissajous_curve) on them.
-///
-/// # Examples
-///
-/// ## Basic Lissajous
-///
-/// For this example, set up a [`RingBuffer<(f32, f32)>`](crate::utils::RingBuffer)
-/// that contains your stereo data as tuples of `f32`s.
-///
-/// ```
-/// Lissajous::new(cx, Data::lissajous_buffer).color(Color::rgb(160, 160, 160));
-/// ```
-///
-/// ## Grid and Labels
-///
-/// If you want to take it a step further, you can add a [`LissajousGrid`] and
-/// labels to your Lissajous.
-///
-/// ```
-/// ZStack::new(cx, |cx| {
-///     LissajousGrid::new(cx)
-///         .background_color(Color::rgb(32, 32, 32))
-///         .color(Color::rgb(60, 60, 60));
-///     Lissajous::new(cx, Data::lissajous_buffer).color(Color::rgb(160, 160, 160));
-///     ZStack::new(cx, |cx| {
-///         Label::new(cx, "+L").color(Color::rgb(160, 160, 160));
-///         Label::new(cx, "+R")
-///             .left(Percentage(100.))
-///             .transform(Transform::TranslateX(LengthOrPercentage::Percentage(-100.)))
-///             .color(Color::rgb(160, 160, 160));
-///         Label::new(cx, "-R")
-///             .top(Percentage(100.))
-///             .transform(Transform::TranslateY(LengthOrPercentage::Percentage(-100.)))
-///             .color(Color::rgb(160, 160, 160));
-///         Label::new(cx, "-L")
-///             .top(Percentage(100.))
-///             .left(Percentage(100.))
-///             .transform(vec![
-///                 Transform::TranslateX(LengthOrPercentage::Percentage(-100.)),
-///                 Transform::TranslateY(LengthOrPercentage::Percentage(-100.)),
-///             ])
-///             .color(Color::rgb(160, 160, 160));
-///     })
-///     .space(Pixels(16.));
-/// })
-/// .background_color(Color::rgb(16, 16, 16))
-/// .border_color(Color::rgb(80, 80, 80))
-/// .border_width(Pixels(1.))
-/// .width(Pixels(200.));
-/// ```
-pub struct Lissajous<L>
-where
-    L: Lens<Target = Arc<Mutex<RingBuffer<(f32, f32)>>>>,
-{
-    buffer: L,
+pub struct Lissajous<B: Bus<Sample> + 'static> {
+    buffer: Arc<Mutex<RingBuffer<Sample>>>,
+    dispatcher: Arc<dyn Fn(<B as Bus<[f32; 2]>>::O<'_>) + Send + Sync>,
 }
 
-impl<L> Lissajous<L>
-where
-    L: Lens<Target = Arc<Mutex<RingBuffer<(f32, f32)>>>>,
-{
-    pub fn new(cx: &mut Context, buffer: L) -> Handle<Self> {
-        Self { buffer }.build(cx, |_| {})
+impl<B: Bus<Sample> + 'static> Lissajous<B> {
+    /// Creates a new [`Lissajous`].
+    pub fn new(cx: &mut Context, bus: Arc<B>, duration: usize) -> Handle<Self> {
+        let buffer = Arc::new(Mutex::new(RingBuffer::<Sample>::new(duration)));
+        let buffer_c = buffer.clone();
+
+        let dispatcher = bus.register_dispatcher(move |samples| {
+            if let Ok(mut buffer) = buffer_c.lock() {
+                for sample in samples {
+                    buffer.enqueue(*sample);
+                }
+            }
+        });
+
+        Self { buffer, dispatcher }.build(cx, |_| {})
     }
 }
 
-impl<L> View for Lissajous<L>
-where
-    L: Lens<Target = Arc<Mutex<RingBuffer<(f32, f32)>>>>,
-{
+impl<B: Bus<Sample> + 'static> View for Lissajous<B> {
     fn element(&self) -> Option<&'static str> {
         None
     }
@@ -109,16 +64,15 @@ where
         let w = bounds.w;
         let h = bounds.h;
 
-        let binding = self.buffer.get(cx);
-        let ring_buf = &(binding.lock().unwrap());
+        let ring_buf = &(self.buffer.lock().unwrap());
 
         canvas.fill_path(
             &{
                 let mut dots = vg::Path::new();
 
                 for i in 0..ring_buf.len() {
-                    let left = ring_buf[i].0.clamp(-1., 1.);
-                    let right = ring_buf[i].1.clamp(-1., 1.);
+                    let left = ring_buf[i][0].clamp(-1., 1.);
+                    let right = ring_buf[i][1].clamp(-1., 1.);
 
                     let dot_x = left * *TRANSLATE_COS - right * *TRANSLATE_SIN;
                     let dot_y = left * *TRANSLATE_SIN + right * *TRANSLATE_COS;

@@ -6,28 +6,37 @@ use super::RangeModifiers;
 
 /// Generic grid backdrop that displays either horizontal or vertical lines.
 ///
-/// Put this grid inside a ZStack, along with your visualizer of choice.
+/// Put this grid inside a [`ZStack`], along with your visualizer of choice.
 ///
 /// # Example
 ///
-/// Here's how to add a `Grid` as a backdrop to a `Graph`.
+/// Here's how to add a [`Grid`] as a backdrop to a [`Graph`](super::Graph).
 ///
 /// ```
 /// ZStack::new(cx, |cx| {
 ///     Grid::new(
 ///         cx,
 ///         ValueScaling::Linear,
-///         (-32., 8.),
+///         (-32., 8.0),
 ///         vec![6.0, 0.0, -6.0, -12.0, -18.0, -24.0, -30.0],
 ///         Orientation::Horizontal,
 ///     )
-///     .color(Color::rgb(60, 60, 60));
-///
-///     Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
-///         .color(Color::rgba(255, 255, 255, 160))
-///         .background_color(Color::rgba(255, 255, 255, 60));
+///     .border_width(Pixels(0.5))
+///     .color(Color::rgb(30, 30, 30));
+///     Graph::peak(
+///         cx,
+///         bus.clone(),
+///         10.0,
+///         50.0,
+///         (-32.0, 8.0),
+///         ValueScaling::Decibels,
+///     )
+///     .color(Color::rgba(255, 255, 255, 60))
+///     .background_color(Color::rgba(255, 255, 255, 30));
 /// })
-/// .background_color(Color::rgb(16, 16, 16));
+/// .background_color(Color::rgb(16, 16, 16))
+/// .border_width(Pixels(1.0))
+/// .border_color(Color::rgb(48, 48, 48));
 /// ```
 ///
 /// Note that both the `Graph` and `Grid` have the same range, which is necessary
@@ -45,6 +54,7 @@ enum GridEvents {
 }
 
 impl Grid {
+    /// Creates a new [`Grid`].
     pub fn new(
         cx: &mut Context,
         scaling: ValueScaling,
@@ -76,7 +86,11 @@ impl View for Grid {
         let w = bounds.w;
         let h = bounds.h;
 
-        let line_width = cx.scale_factor();
+        let line_width = if cx.border_width() > 0.0 {
+            cx.border_width() * cx.scale_factor()
+        } else {
+            cx.scale_factor()
+        };
 
         canvas.stroke_path(
             &{

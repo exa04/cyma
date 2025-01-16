@@ -1,33 +1,26 @@
 use cyma::prelude::*;
-use cyma::{
-    utils::PeakBuffer,
-    visualizers::{Graph, Grid, UnitRuler},
-};
+use cyma::visualizers::{Graph, Grid, UnitRuler};
 use nih_plug::editor::Editor;
+use nih_plug::nih_dbg;
 use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
-use std::sync::{Arc, Mutex};
-
-#[derive(Lens, Clone)]
-pub(crate) struct Data {
-    peak_buffer: Arc<Mutex<PeakBuffer>>,
-}
-
-impl Data {
-    pub(crate) fn new(peak_buffer: Arc<Mutex<PeakBuffer>>) -> Self {
-        Self { peak_buffer }
-    }
-}
-
-impl Model for Data {}
+use std::sync::Arc;
 
 pub(crate) fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (800, 500))
 }
 
-pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option<Box<dyn Editor>> {
+#[derive(Lens)]
+struct TimerState {
+    timer: Timer,
+}
+
+impl Model for TimerState {}
+
+pub(crate) fn create(editor_state: Arc<ViziaState>, bus: Arc<MonoBus>) -> Option<Box<dyn Editor>> {
     create_vizia_editor(editor_state, ViziaTheming::default(), move |cx, _| {
         assets::register_noto_sans_light(cx);
-        editor_data.clone().build(cx);
+
+        bus.subscribe(cx);
 
         HStack::new(cx, |cx| {
             ZStack::new(cx, |cx| {
@@ -40,9 +33,16 @@ pub(crate) fn create(editor_data: Data, editor_state: Arc<ViziaState>) -> Option
                 )
                 .color(Color::rgb(60, 60, 60));
 
-                Graph::new(cx, Data::peak_buffer, (-32.0, 8.0), ValueScaling::Decibels)
-                    .color(Color::rgba(255, 255, 255, 160))
-                    .background_color(Color::rgba(255, 255, 255, 60));
+                Graph::peak(
+                    cx,
+                    bus.clone(),
+                    10.0,
+                    50.0,
+                    (-32.0, 8.0),
+                    ValueScaling::Decibels,
+                )
+                .color(Color::rgba(255, 255, 255, 160))
+                .background_color(Color::rgba(255, 255, 255, 60));
             })
             .background_color(Color::rgb(16, 16, 16));
 

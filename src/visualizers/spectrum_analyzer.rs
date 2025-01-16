@@ -2,7 +2,7 @@ use nih_plug_vizia::vizia::prelude::*;
 use nih_plug_vizia::vizia::vg;
 use std::sync::{Arc, Mutex};
 
-use crate::utils::SpectrumOutput;
+use crate::spectrum::SpectrumOutput;
 use crate::utils::ValueScaling;
 
 /// Spectrum analyzer that shows the magnitude of each frequency bin inside a
@@ -13,9 +13,9 @@ use crate::utils::ValueScaling;
 /// # Usage
 ///
 /// To use this visualizer, you need to add a
-/// [`SpectrumInput`](crate::utils::SpectrumInput) and a
-/// [`SpectrumOutput`](crate::utils::SpectrumOutput) to your plugin. Call
-/// [`compute`](crate::utils::SpectrumInput::compute) on the `SpectrumInput` to
+/// [`SpectrumInput`](crate::spectrum::SpectrumInput) and a
+/// [`SpectrumOutput`](crate::spectrum::SpectrumOutput) to your plugin. Call
+/// [`compute`](crate::spectrum::SpectrumInput::compute) on the `SpectrumInput` to
 /// compute the spectrum inside your plug-in's
 /// [`process()`](nih_plug::plugin::Plugin::process) function. The `SpectrumOutput`
 /// can then be sent to your editor inside the
