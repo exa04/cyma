@@ -26,9 +26,9 @@ plug-in user interfaces with ease. It uses various custom data structures for
 real-time visualizers, allowing you to easily build beautiful, performant
 plug-in UIs.
 
-Here's a demo ([YouTube mirror](https://www.youtube.com/watch?v=DQ-9XRBLpB4))
+Here's a demo ([YouTube mirror](https://www.youtube.com/watch?v=He70jwvdjFU))
 
-https://github.com/223230/cyma/assets/68156346/dea8ee3e-7162-4752-a569-6dc4218b0745
+https://github.com/user-attachments/assets/456a6705-5936-4118-a527-fb8999a91041
 
 Wanna see the code behind this? It's [this example!](./examples/visualizers)
 
