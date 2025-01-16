@@ -7,13 +7,13 @@
   Composable views and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
   
   
-  <a href="https://github.com/223230/cyma/actions/workflows/test.yml"><img src="https://github.com/223230/cyma/actions/workflows/test.yml/badge.svg"></a>
-  <a href="https://github.com/223230/cyma/actions/workflows/docs.yml"><img src="https://github.com/223230/cyma/actions/workflows/docs.yaml/badge.svg"></a>
-  <a href="https://deps.rs/repo/github/223230/cyma"><img src="https://deps.rs/repo/github/223230/cyma/status.svg"></a>
+  <a href="https://github.com/exa04/cyma/actions/workflows/test.yml"><img src="https://github.com/exa04/cyma/actions/workflows/test.yml/badge.svg"></a>
+  <a href="https://github.com/exa04/cyma/actions/workflows/docs.yml"><img src="https://github.com/exa04/cyma/actions/workflows/docs.yaml/badge.svg"></a>
+  <a href="https://deps.rs/repo/github/exa04/cyma"><img src="https://deps.rs/repo/github/exa04/cyma/status.svg"></a>
 </div>
 
-[Documentation]: https://223230.github.io/cyma
-[Book]: https://223230.github.io/cyma/book
+[Documentation]: https://exa04.github.io/cyma
+[Book]: https://exa04.github.io/cyma/book
 [Examples]: ./examples/
 [Contributing]: CONTRIBUTING.md
 
@@ -34,9 +34,7 @@ Wanna see the code behind this? It's [this example!](./examples/visualizers)
 
 ## 🧰 What's included
 
-Check out [this project](https://github.com/users/223230/projects/5/views/3) to see
-what views will eventually be added. Do you think something's missing? File a
-feature request so it can be added!
+Do you think something's missing? File a feature request so it can be added!
 
 ### 📊 Visualizers
 
