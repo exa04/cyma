@@ -7,7 +7,7 @@ it to your `Cargo.toml`.
   [dependencies]
   nih_plug = { ... }
   nih_plug_vizia = { ... }
-+ cyma = { git = "https://github.com/223230/cyma" }
++ cyma = { git = "https://github.com/exa04/cyma" }
 ```
 
 Then, you can use Cyma where you need it, by using `cyma::prelude::*`. This
