@@ -1,6 +1,3 @@
-> [!CAUTION]
-> To use Cyma 0.1.0, you often need to use Mutexes within your plugin code, which can lead to **priority inversion** and **syscalls** on the audio thread. I'm working on a new [channel-based system](https://github.com/exa04/cyma/pull/58) to adress this - expect breaking changes. It'll be part of Cyma 0.2.0.
-
 <div align="center">
   <img src="doc/logo.svg">
   <h1>Cyma</h1>
