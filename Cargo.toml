@@ -1,6 +1,6 @@
 [package]
 name = "cyma"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Composable views and associated data structures for nih-plug UIs made using VIZIA"
 
@@ -23,11 +23,6 @@ lazy_static = "1.4.0"
 realfft = "3.3.0"
 triple_buffer = "7.0.0"
 crossbeam-channel = "0.5.13"
-crossbeam-queue = "0.3.11"
-arc-swap = "1.7.1"
-atomic_bitfield = "0.1.0"
-blinkcast = "0.2.0"
-atomic-bus = "0.1.0"
 
 [dev-dependencies]
 rand = "0.8.5"
