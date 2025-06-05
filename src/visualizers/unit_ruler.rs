@@ -1,5 +1,5 @@
 use crate::utils::ValueScaling;
-use nih_plug_vizia::vizia::prelude::*;
+use vizia_plug::vizia::prelude::*;
 
 /// Generic ruler that shows markers for certain values.
 ///

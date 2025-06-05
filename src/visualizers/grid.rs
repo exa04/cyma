@@ -1,4 +1,4 @@
-use nih_plug_vizia::vizia::{prelude::*, vg};
+use vizia_plug::vizia::{prelude::*, vg};
 
 use crate::utils::ValueScaling;
 
@@ -64,8 +64,8 @@ impl Grid {
     ) -> Handle<Self> {
         Self {
             scaling,
-            range: range.get_val(cx),
-            lines: lines.get_val(cx),
+            range: range.get(cx),
+            lines: lines.get(cx),
             orientation,
         }
         .build(cx, |_| {})
@@ -78,7 +78,7 @@ impl View for Grid {
     fn element(&self) -> Option<&'static str> {
         Some("grid")
     }
-    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+    fn draw(&self, cx: &mut DrawContext, canvas: &vizia_plug::vizia::vg::Canvas) {
         let bounds = cx.bounds();
 
         let x = bounds.x;
@@ -92,7 +92,7 @@ impl View for Grid {
             cx.scale_factor()
         };
 
-        canvas.stroke_path(
+        canvas.draw_path(
             &{
                 let mut path = vg::Path::new();
 
@@ -105,8 +105,8 @@ impl View for Grid {
                                 self.range.1,
                             );
 
-                            path.move_to(x, y + h * (1. - y_line));
-                            path.line_to(x + w, y + h * (1. - y_line));
+                            path.move_to((x, y + h * (1. - y_line)));
+                            path.line_to((x + w, y + h * (1. - y_line)));
 
                             path.close();
                         }
@@ -119,8 +119,8 @@ impl View for Grid {
                                 self.range.1,
                             );
 
-                            path.move_to(x + w * x_line, y);
-                            path.line_to(x + w * x_line, y + h);
+                            path.move_to((x + w * x_line, y));
+                            path.line_to((x + w * x_line, y + h));
 
                             path.close();
                         }
@@ -129,7 +129,9 @@ impl View for Grid {
 
                 path
             },
-            &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
+            &vg::Paint::new(Into::<vg::Color4f>::into(cx.font_color()), None)
+                .set_style(vg::PaintStyle::Stroke)
+                .set_stroke_width(line_width),
         );
     }
     fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
@@ -145,7 +147,7 @@ impl<'a> RangeModifiers for Handle<'a, Grid> {
         let e = self.entity();
 
         range.set_or_bind(self.context(), e, move |cx, r| {
-            (*cx).emit_to(e, GridEvents::UpdateRange(r.clone()));
+            (*cx).emit_to(e, GridEvents::UpdateRange(r.get(cx)));
         });
 
         self
@@ -154,7 +156,7 @@ impl<'a> RangeModifiers for Handle<'a, Grid> {
         let e = self.entity();
 
         scaling.set_or_bind(self.context(), e, move |cx, s| {
-            (*cx).emit_to(e, GridEvents::UpdateScaling(s));
+            (*cx).emit_to(e, GridEvents::UpdateScaling(s.get(cx)));
         });
 
         self

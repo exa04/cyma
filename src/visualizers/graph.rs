@@ -2,8 +2,8 @@ use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::accumulators::*;
 use crate::bus::Bus;
 use crate::utils::{RingBuffer, ValueScaling};
-use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
+use vizia_plug::vizia::{prelude::*, vg};
 
 /// A graph visualizer plotting a value over time.
 ///
@@ -58,8 +58,8 @@ impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
 
         Self {
             buffer,
-            range: range.get_val(cx),
-            scaling: scaling.get_val(cx),
+            range: range.get(cx),
+            scaling: scaling.get(cx),
             fill_from: FillFrom::Bottom,
             accumulator,
             dispatcher_handle,
@@ -79,7 +79,7 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
             GraphEvents::UpdateScaling(s) => self.scaling = *s,
         });
     }
-    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+    fn draw(&self, cx: &mut DrawContext, canvas: &vizia_plug::vizia::vg::Canvas) {
         let bounds = cx.bounds();
 
         let x = bounds.x;
@@ -115,7 +115,7 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
 
         let mut stroke = vg::Path::new();
 
-        stroke.move_to(x, y + h * (1. - peak));
+        stroke.move_to((x, y + h * (1. - peak)));
 
         for i in 1..ring_buf.len() {
             // Normalize peak value
@@ -124,7 +124,7 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
                 .value_to_normalized(ring_buf[i], self.range.0, self.range.1);
 
             // Draw peak as a new point
-            stroke.line_to(x + i as f32, y + h * (1. - peak));
+            stroke.line_to((x + i as f32, y + h * (1. - peak)));
         }
 
         let mut fill = stroke.clone();
@@ -136,15 +136,23 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
             }
         };
 
-        fill.line_to(x + w, y + h * fill_from_n);
-        fill.line_to(x, y + h * fill_from_n);
+        fill.line_to((x + w, y + h * fill_from_n));
+        fill.line_to((x, y + h * fill_from_n));
         fill.close();
 
-        canvas.fill_path(&fill, &vg::Paint::color(cx.background_color().into()));
+        canvas.draw_path(
+            &fill,
+            &vg::Paint::new(Into::<vg::Color4f>::into(cx.background_color()), None)
+                .set_style(vg::PaintStyle::Fill)
+                .set_anti_alias(true),
+        );
 
-        canvas.stroke_path(
+        canvas.draw_path(
             &stroke,
-            &vg::Paint::color(cx.font_color().into()).with_line_width(line_width),
+            &vg::Paint::new(Into::<vg::Color4f>::into(cx.font_color()), None)
+                .set_style(vg::PaintStyle::Stroke)
+                .set_stroke_width(line_width)
+                .set_anti_alias(true),
         );
     }
 }
@@ -171,7 +179,7 @@ impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
         let e = self.entity();
 
         range.set_or_bind(self.context(), e, move |cx, r| {
-            (*cx).emit_to(e, GraphEvents::UpdateRange(r.clone()));
+            (*cx).emit_to(e, GraphEvents::UpdateRange(r.get(cx)));
         });
 
         self
@@ -180,7 +188,7 @@ impl<'a, B: Bus<f32> + 'static, A: Accumulator + 'static> RangeModifiers
         let e = self.entity();
 
         scaling.set_or_bind(self.context(), e, move |cx, s| {
-            (*cx).emit_to(e, GraphEvents::UpdateScaling(s.clone()))
+            (*cx).emit_to(e, GraphEvents::UpdateScaling(s.get(cx)))
         });
 
         self

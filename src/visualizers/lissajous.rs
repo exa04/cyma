@@ -1,7 +1,7 @@
 use crate::{bus::Bus, utils::RingBuffer};
 
 use lazy_static::lazy_static;
-use nih_plug_vizia::vizia::{
+use vizia_plug::vizia::{
     binding::{Lens, LensExt},
     context::{Context, DrawContext},
     vg,

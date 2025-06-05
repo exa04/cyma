@@ -4,7 +4,7 @@ use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::accumulators::*;
 use crate::bus::Bus;
 use crate::utils::ValueScaling;
-use nih_plug_vizia::vizia::{prelude::*, vg};
+use vizia_plug::vizia::{prelude::*, vg};
 
 /// Displays some metric as a bar.
 ///

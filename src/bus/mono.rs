@@ -75,7 +75,7 @@ impl Bus<f32> for MonoBus {
         self.sample_rate.load(Ordering::Relaxed)
     }
 
-    fn update(&self) {
+    fn update(&self, cx: &mut ContextProxy) {
         if self.channel.1.is_empty() {
             return;
         }
@@ -88,6 +88,8 @@ impl Bus<f32> for MonoBus {
             .iter()
             .filter_map(|d| d.upgrade())
             .for_each(|d| d(samples.iter()));
+
+        cx.redraw();
     }
 
     fn register_dispatcher<F: for<'a> Fn(Self::I<'a>) + Sync + Send + 'static>(

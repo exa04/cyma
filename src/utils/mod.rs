@@ -4,9 +4,7 @@ mod ring_buffer;
 pub(crate) use ring_buffer::*;
 
 use nih_plug::util::db_to_gain;
-use nih_plug_vizia::vizia::binding::Res;
-use nih_plug_vizia::vizia::context::{Context, EventContext};
-use nih_plug_vizia::vizia::entity::Entity;
+use vizia_plug::vizia::prelude::*;
 
 /// Analogous to VIZIA's own ValueScaling.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -85,19 +83,4 @@ impl ValueScaling {
     }
 }
 
-// We can't use impl_res_simple!() since we're using nih_plug's version of VIZIA
-impl Res<ValueScaling> for ValueScaling {
-    fn get_val(&self, _: &Context) -> ValueScaling {
-        *self
-    }
-
-    fn set_or_bind<F>(&self, cx: &mut Context, entity: Entity, closure: F)
-    where
-        F: 'static + Fn(&mut EventContext, Self),
-    {
-        cx.with_current(entity, |cx| {
-            let cx = &mut EventContext::new_with_current(cx, entity);
-            (closure)(cx, *self);
-        });
-    }
-}
+impl_res_simple!(ValueScaling);

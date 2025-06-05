@@ -128,7 +128,7 @@ impl<const C: usize> Bus<[f32; C]> for MultiChannelBus<C> {
         dispatcher
     }
 
-    fn update(&self) {
+    fn update(&self, cx: &mut ContextProxy) {
         let samples = self.channel.1.try_iter().collect::<Vec<_>>();
 
         if samples.is_empty() {
@@ -141,6 +141,8 @@ impl<const C: usize> Bus<[f32; C]> for MultiChannelBus<C> {
             .iter()
             .filter_map(|d| d.upgrade())
             .for_each(|d| d(samples.iter()));
+
+        cx.redraw();
     }
 
     fn set_sample_rate(&self, sample_rate: f32) {

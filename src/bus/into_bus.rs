@@ -33,8 +33,8 @@ where
         })
     }
 
-    fn update(&self) {
-        self.bus.update()
+    fn update(&self, cx: &mut ContextProxy) {
+        self.bus.update(cx)
     }
 
     #[inline]
