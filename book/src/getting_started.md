@@ -6,7 +6,7 @@ it to your `Cargo.toml`.
 ```diff
   [dependencies]
   nih_plug = { ... }
-  nih_plug_vizia = { ... }
+  vizia_plug = { ... }
 + cyma = { git = "https://github.com/exa04/cyma" }
 ```
 

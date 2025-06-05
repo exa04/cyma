@@ -1,8 +1,8 @@
-use cyma::prelude::*;
 use nih_plug::editor::Editor;
-use nih_plug_vizia::widgets::ResizeHandle;
-use nih_plug_vizia::{assets, create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
 use std::sync::{Arc, Mutex};
+use vizia_plug::{create_vizia_editor, vizia::prelude::*, ViziaState, ViziaTheming};
+
+use cyma::prelude::*;
 
 #[derive(Lens, Clone)]
 pub(crate) struct Data {
@@ -26,8 +26,6 @@ pub(crate) fn create(
         stereo_bus.subscribe(cx);
 
         editor_data.clone().build(cx);
-
-        assets::register_noto_sans_light(cx);
 
         VStack::new(cx, |cx| {
             HStack::new(cx, |cx| {

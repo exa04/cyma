@@ -10,7 +10,7 @@ crate-type = ["cdylib", "lib"]
 [dependencies]
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", features = ["assert_process_allocs", "standalone"] }
 cyma = { path = "../../" }
-nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+vizia_plug = { git = "https://github.com/vizia/vizia-plug.git" }
 
 [profile.release]
 lto = "thin"

@@ -1,7 +1,7 @@
 use crate::bus::Bus;
 use crate::utils::ValueScaling;
 use nih_plug::prelude::AtomicF32;
-use nih_plug_vizia::vizia::{prelude::*, vg};
+use vizia_plug::vizia::{prelude::*, vg};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

@@ -1,6 +1,6 @@
-use nih_plug_vizia::vizia::prelude::*;
-use nih_plug_vizia::vizia::vg;
 use std::sync::{Arc, Mutex};
+use vizia_plug::vizia::prelude::*;
+use vizia_plug::vizia::vg;
 
 use crate::spectrum::SpectrumOutput;
 use crate::utils::ValueScaling;
@@ -260,7 +260,7 @@ impl View for SpectrumAnalyzer {
         Some("spectrum-analyzer")
     }
 
-    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+    fn draw(&self, cx: &mut DrawContext, canvas: &vizia_plug::vizia::vg::Canvas) {
         let bounds = cx.bounds();
 
         let x = bounds.x;
@@ -272,8 +272,7 @@ impl View for SpectrumAnalyzer {
         let half_nyquist = spectrum.sample_rate / 2.;
         let spectrum_output = spectrum.output.read();
 
-        let foreground =
-            vg::Paint::color(cx.font_color().into()).with_line_width(cx.scale_factor());
+        let foreground = vg::Paint::color(cx.font_color()).with_line_width(cx.scale_factor());
         let background =
             vg::Paint::color(cx.background_color().into()).with_line_width(cx.scale_factor());
 
