@@ -1,11 +1,10 @@
 <div align="center">
   <img src="doc/logo.svg">
-  <h1>Cyma</h1>
+  <h1>CYMA</h1>
   
   [Documentation] | [Book] | [Examples] | [Contributing]
   
   Composable views and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
-  
   
   <a href="https://github.com/exa04/cyma/actions/workflows/test.yml"><img src="https://github.com/exa04/cyma/actions/workflows/test.yml/badge.svg"></a>
   <a href="https://github.com/exa04/cyma/actions/workflows/docs.yml"><img src="https://github.com/exa04/cyma/actions/workflows/docs.yaml/badge.svg"></a>
@@ -21,7 +20,7 @@
 
 ## ✨ Overview
 
-Cyma is a collection of flexible, composable views that you can use to make rich
+CYMA is a collection of flexible, composable views that you can use to make rich
 plug-in user interfaces with ease. It uses various custom data structures for
 real-time visualizers, allowing you to easily build beautiful, performant
 plug-in UIs.
@@ -31,6 +30,10 @@ Here's a demo ([YouTube mirror](https://www.youtube.com/watch?v=He70jwvdjFU))
 https://github.com/user-attachments/assets/456a6705-5936-4118-a527-fb8999a91041
 
 Wanna see the code behind this? It's [this example!](./examples/visualizers)
+
+> [!TIP]
+> A version of Cyma that experimentally supports [`vizia-plug`](https://github.com/vizia/vizia-plug) instead of `nih-plug-vizia` is in the works.<br>
+> You can check it out on the [`vizia-plug` branch](https://github.com/exa04/cyma/tree/vizia_plug).
 
 ## 🧰 What's included
 
@@ -125,7 +128,7 @@ system.
 
 ## 🍔 Composing views
 
-A core feature of Cyma is composability.
+A core feature of CYMA is composability.
 
 For example, by combining views such as the `Grid`, `UnitRuler`, `Graph`, and
 `Histogram` you can make this real-time peak graph with an RMS plot and a
@@ -191,11 +194,8 @@ ZStack::new(cx, |cx| {
 
 ## 🙋 Contributing
 
-If you have questions about Cyma, need help with something, or want to show off
-what you built using it, head over to the [Discussions](https://github.com/223230/cyma/discussions) tab.
-
 If you want to contribute through issues and code contributions, read the
-[Contributing Guidelines](./CONTRIBUTING.md) first
+[Contributing Guidelines](./CONTRIBUTING.md) first.
 
 ## 📃 License
 
