@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use nih_plug_vizia::vizia::{prelude::*, vg};
+use vizia_plug::vizia::{prelude::*, vg};
 
 use super::RangeModifiers;
 use crate::accumulators::sample_delta;
@@ -87,7 +87,6 @@ impl WaveformAccumulator {
 
 /// Displays the incoming signal as a waveform.
 pub struct Oscilloscope<B: Bus<f32> + 'static> {
-    bus: Arc<B>,
     dispatcher_handle: Arc<dyn Fn(<B as Bus<f32>>::O<'_>) + Send + Sync>,
     accumulator: Arc<Mutex<WaveformAccumulator>>,
     buffer: Arc<Mutex<RingBuffer<Sample>>>,
@@ -128,12 +127,11 @@ impl<B: Bus<f32> + 'static> Oscilloscope<B> {
         });
 
         Self {
-            bus,
             dispatcher_handle,
             accumulator,
             buffer,
-            range: range.get_val(cx),
-            scaling: scaling.get_val(cx),
+            range: range.get(cx),
+            scaling: scaling.get(cx),
         }
         .build(cx, |_| {})
         .range(range)
@@ -145,15 +143,13 @@ impl<B: Bus<f32> + 'static> View for Oscilloscope<B> {
     fn element(&self) -> Option<&'static str> {
         Some("oscilloscope")
     }
-    fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
+    fn draw(&self, cx: &mut DrawContext, canvas: &vizia_plug::vizia::vg::Canvas) {
         let bounds = cx.bounds();
 
         let x = bounds.x;
         let y = bounds.y;
         let w = bounds.w;
         let h = bounds.h;
-
-        self.bus.update();
 
         let ring_buf = &mut self.buffer.lock().unwrap();
 
@@ -174,32 +170,34 @@ impl<B: Bus<f32> + 'static> View for Oscilloscope<B> {
         let mut py = self
             .scaling
             .value_to_normalized(ring_buf[0].min, self.range.0, self.range.1);
-        fill.move_to(x, y + h * (1. - py) + 1.);
+        fill.move_to((x, y + h * (1. - py) + 1.));
         for i in 1..len {
             py = self
                 .scaling
                 .value_to_normalized(ring_buf[i].min, self.range.0, self.range.1);
 
-            fill.line_to(x + i as f32, y + h * (1. - py) + cx.scale_factor());
+            fill.line_to((x + i as f32, y + h * (1. - py) + cx.scale_factor()));
         }
 
         // Local maxima (top part of waveform)
         py = self
             .scaling
             .value_to_normalized(ring_buf[len - 1].max, self.range.0, self.range.1);
-        fill.line_to(x + w, y + h * (1. - py) + 1.);
+        fill.line_to((x + w, y + h * (1. - py) + 1.));
         for i in 1..len {
             py =
                 self.scaling
                     .value_to_normalized(ring_buf[len - i].max, self.range.0, self.range.1);
 
-            fill.line_to(x + len as f32 - i as f32, y + h * (1. - py));
+            fill.line_to((x + len as f32 - i as f32, y + h * (1. - py)));
         }
 
         fill.close();
-        canvas.fill_path(
+        canvas.draw_path(
             &fill,
-            &vg::Paint::color(cx.font_color().into()).with_line_width(0.),
+            &vg::Paint::new(Into::<vg::Color4f>::into(cx.font_color()), None)
+                .set_anti_alias(true)
+                .set_style(vg::PaintStyle::Fill),
         );
     }
     fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
@@ -215,7 +213,7 @@ impl<'a, B: Bus<f32> + 'static> RangeModifiers for Handle<'a, Oscilloscope<B>> {
         let e = self.entity();
 
         range.set_or_bind(self.context(), e, move |cx, r| {
-            (*cx).emit_to(e, OscilloscopeEvents::UpdateRange(r));
+            (*cx).emit_to(e, OscilloscopeEvents::UpdateRange(r.get(cx)));
         });
 
         self
@@ -224,7 +222,7 @@ impl<'a, B: Bus<f32> + 'static> RangeModifiers for Handle<'a, Oscilloscope<B>> {
         let e = self.entity();
 
         scaling.set_or_bind(self.context(), e, move |cx, s| {
-            (*cx).emit_to(e, OscilloscopeEvents::UpdateScaling(s));
+            (*cx).emit_to(e, OscilloscopeEvents::UpdateScaling(s.get(cx)));
         });
 
         self

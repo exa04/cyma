@@ -1,7 +1,7 @@
 use cyma::prelude::*;
 use nih_plug::prelude::*;
-use nih_plug_vizia::ViziaState;
 use std::sync::{Arc, Mutex};
+use vizia_plug::ViziaState;
 
 mod editor;
 

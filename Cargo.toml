@@ -17,7 +17,7 @@ members = [
 doctest = false
 
 [dependencies]
-nih_plug_vizia = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+vizia_plug = { git = "https://github.com/vizia/vizia-plug.git" }
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git" }
 lazy_static = "1.4.0"
 realfft = "3.3.0"

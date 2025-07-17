@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use nih_plug_vizia::vizia::{prelude::*, vg};
+use vizia_plug::vizia::{prelude::*, vg};
 
 /// Static waveform.
 ///

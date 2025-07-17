@@ -2,26 +2,26 @@
 
 mod graph;
 mod grid;
-mod histogram;
-mod lissajous;
-mod meter;
+// mod histogram;
+// mod lissajous;
+// mod meter;
 mod oscilloscope;
-mod spectrum_analyzer;
+// mod spectrum_analyzer;
 mod unit_ruler;
 // mod waveform;
 
 pub use graph::*;
 pub use grid::*;
-pub use histogram::*;
-pub use lissajous::*;
-pub use meter::*;
+// pub use histogram::*;
+// pub use lissajous::*;
+// pub use meter::*;
 pub use oscilloscope::*;
-pub use spectrum_analyzer::*;
+// pub use spectrum_analyzer::*;
 pub use unit_ruler::*;
 // pub use waveform::*;
 
 use super::utils::ValueScaling;
-use nih_plug_vizia::vizia::binding::Res;
+use vizia_plug::vizia::binding::Res;
 
 pub trait RangeModifiers {
     /// Sets the minimum and maximum values that can be displayed by the view

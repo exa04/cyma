@@ -9,7 +9,7 @@ mod multichannel;
 pub use into_bus::*;
 pub use mono::*;
 pub use multichannel::*;
-use nih_plug_vizia::vizia::prelude::*;
+use vizia_plug::vizia::prelude::*;
 
 /// A bus for stereo data.
 pub type StereoBus = MultiChannelBus<2>;
@@ -37,7 +37,7 @@ where
 
     /// Calls all registered dispatchers and provides them with the latest
     /// audio data, if any is available.
-    fn update(&self);
+    fn update(&self, cx: &mut ContextProxy);
 
     /// Registers a new dispatcher and returns a handle to it.
     ///
@@ -53,7 +53,7 @@ where
     fn subscribe(self: &Arc<Self>, cx: &mut Context) {
         let bus = self.clone();
         cx.spawn(move |cx| loop {
-            bus.update();
+            bus.update(cx);
             thread::sleep(Duration::from_millis(15));
         });
     }
