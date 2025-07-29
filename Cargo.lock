@@ -1163,7 +1163,7 @@ dependencies = [
 
 [[package]]
 name = "cyma"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "crossbeam-channel",
  "lazy_static",

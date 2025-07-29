@@ -7,9 +7,10 @@ use nih_plug::util::db_to_gain;
 use nih_plug_vizia::vizia::binding::Res;
 use nih_plug_vizia::vizia::context::{Context, EventContext};
 use nih_plug_vizia::vizia::entity::Entity;
+use nih_plug_vizia::vizia::prelude::Data;
 
 /// Analogous to VIZIA's own ValueScaling.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Data)]
 pub enum ValueScaling {
     Linear,
     Power(f32),
