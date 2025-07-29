@@ -1,6 +1,7 @@
 use super::{FillFrom, FillModifiers, RangeModifiers};
 use crate::accumulators::*;
 use crate::bus::Bus;
+use crate::prelude::DurationModifiers;
 use crate::utils::{RingBuffer, ValueScaling};
 use nih_plug_vizia::vizia::{prelude::*, vg};
 use std::sync::{Arc, Mutex};
@@ -27,6 +28,7 @@ pub struct Graph<B: Bus<f32> + 'static, A: Accumulator + 'static> {
 enum GraphEvents {
     UpdateRange((f32, f32)),
     UpdateScaling(ValueScaling),
+    UpdateDuration(f32),
 }
 
 impl<B: Bus<f32> + 'static, A: Accumulator + 'static> Graph<B, A> {
@@ -77,6 +79,9 @@ impl<B: Bus<f32>, A: Accumulator + 'static> View for Graph<B, A> {
         event.map(|e, _| match e {
             GraphEvents::UpdateRange(v) => self.range = *v,
             GraphEvents::UpdateScaling(s) => self.scaling = *s,
+            GraphEvents::UpdateDuration(duration) => {
+                self.accumulator.lock().unwrap().set_duration(*duration)
+            }
         });
     }
     fn draw(&self, cx: &mut DrawContext, canvas: &mut Canvas) {
@@ -209,7 +214,7 @@ impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
     pub fn peak(
         cx: &mut Context,
         bus: Arc<B>,
-        duration: f32,
+        duration: impl Res<f32> + Clone,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
@@ -217,10 +222,11 @@ impl<B: Bus<f32> + 'static> Graph<B, PeakAccumulator> {
         Self::with_accumulator(
             cx,
             bus,
-            PeakAccumulator::new(duration, decay),
+            PeakAccumulator::new(duration.get_val(cx), decay),
             range,
             scaling,
         )
+        .duration(duration)
     }
 }
 impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
@@ -247,7 +253,7 @@ impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
     pub fn minima(
         cx: &mut Context,
         bus: Arc<B>,
-        duration: f32,
+        duration: impl Res<f32> + Clone,
         decay: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
@@ -255,10 +261,11 @@ impl<B: Bus<f32> + 'static> Graph<B, MinimumAccumulator> {
         Self::with_accumulator(
             cx,
             bus,
-            MinimumAccumulator::new(duration, decay),
+            MinimumAccumulator::new(duration.get_val(cx), decay),
             range,
             scaling,
         )
+        .duration(duration)
     }
 }
 impl<B: Bus<f32> + 'static> Graph<B, RMSAccumulator> {
@@ -282,7 +289,7 @@ impl<B: Bus<f32> + 'static> Graph<B, RMSAccumulator> {
     pub fn rms(
         cx: &mut Context,
         bus: Arc<B>,
-        duration: f32,
+        duration: impl Res<f32> + Clone,
         window_size: f32,
         range: impl Res<(f32, f32)> + Clone,
         scaling: impl Res<ValueScaling> + Clone,
@@ -290,9 +297,22 @@ impl<B: Bus<f32> + 'static> Graph<B, RMSAccumulator> {
         Self::with_accumulator(
             cx,
             bus,
-            RMSAccumulator::new(duration, window_size),
+            RMSAccumulator::new(duration.get_val(cx), window_size),
             range,
             scaling,
         )
+        .duration(duration)
+    }
+}
+
+impl<'a, B: Bus<f32> + 'static, A: Accumulator> DurationModifiers for Handle<'a, Graph<B, A>> {
+    fn duration(mut self, duration: impl Res<f32>) -> Self {
+        let e = self.entity();
+
+        duration.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, GraphEvents::UpdateDuration(s))
+        });
+
+        self
     }
 }

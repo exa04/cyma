@@ -4,6 +4,7 @@ use nih_plug_vizia::vizia::{prelude::*, vg};
 
 use super::RangeModifiers;
 use crate::accumulators::sample_delta;
+use crate::prelude::DurationModifiers;
 use crate::{
     bus::Bus,
     utils::{RingBuffer, ValueScaling},
@@ -83,6 +84,12 @@ impl WaveformAccumulator {
         self.size = size;
         self.update();
     }
+
+    #[inline]
+    fn set_duration(&mut self, duration: f32) {
+        self.duration = duration;
+        self.update();
+    }
 }
 
 /// Displays the incoming signal as a waveform.
@@ -98,6 +105,7 @@ pub struct Oscilloscope<B: Bus<f32> + 'static> {
 enum OscilloscopeEvents {
     UpdateRange((f32, f32)),
     UpdateScaling(ValueScaling),
+    UpdateDuration(f32),
 }
 
 impl<B: Bus<f32> + 'static> Oscilloscope<B> {
@@ -105,11 +113,11 @@ impl<B: Bus<f32> + 'static> Oscilloscope<B> {
     pub fn new(
         cx: &mut Context,
         bus: Arc<B>,
-        duration: f32,
+        duration: impl Res<f32>,
         range: impl Res<(f32, f32)>,
         scaling: impl Res<ValueScaling>,
     ) -> Handle<Self> {
-        let mut accumulator = WaveformAccumulator::new(duration);
+        let mut accumulator = WaveformAccumulator::new(duration.get_val(cx));
         accumulator.set_sample_rate(bus.sample_rate());
         let accumulator = Arc::new(Mutex::new(accumulator));
         let accumulator_c = accumulator.clone();
@@ -136,6 +144,7 @@ impl<B: Bus<f32> + 'static> Oscilloscope<B> {
             scaling: scaling.get_val(cx),
         }
         .build(cx, |_| {})
+        .duration(duration)
         .range(range)
         .scaling(scaling)
     }
@@ -202,10 +211,13 @@ impl<B: Bus<f32> + 'static> View for Oscilloscope<B> {
             &vg::Paint::color(cx.font_color().into()).with_line_width(0.),
         );
     }
-    fn event(&mut self, cx: &mut EventContext, event: &mut Event) {
+    fn event(&mut self, _cx: &mut EventContext, event: &mut Event) {
         event.map(|e, _| match e {
             OscilloscopeEvents::UpdateRange(v) => self.range = *v,
             OscilloscopeEvents::UpdateScaling(v) => self.scaling = *v,
+            OscilloscopeEvents::UpdateDuration(v) => {
+                self.accumulator.lock().unwrap().set_duration(*v)
+            }
         });
     }
 }
@@ -225,6 +237,18 @@ impl<'a, B: Bus<f32> + 'static> RangeModifiers for Handle<'a, Oscilloscope<B>> {
 
         scaling.set_or_bind(self.context(), e, move |cx, s| {
             (*cx).emit_to(e, OscilloscopeEvents::UpdateScaling(s));
+        });
+
+        self
+    }
+}
+
+impl<'a, B: Bus<f32> + 'static> DurationModifiers for Handle<'a, Oscilloscope<B>> {
+    fn duration(mut self, duration: impl Res<f32>) -> Self {
+        let e = self.entity();
+
+        duration.set_or_bind(self.context(), e, move |cx, s| {
+            (*cx).emit_to(e, OscilloscopeEvents::UpdateDuration(s))
         });
 
         self

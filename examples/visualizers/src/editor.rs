@@ -7,9 +7,20 @@ use std::sync::{Arc, Mutex};
 #[derive(Lens, Clone)]
 pub(crate) struct Data {
     pub(crate) spectrum: Arc<Mutex<SpectrumOutput>>,
+    pub(crate) duration: f32,
 }
 
-impl Model for Data {}
+enum EditorEvent {
+    UpdateDuration(f32),
+}
+
+impl Model for Data {
+    fn event(&mut self, _cx: &mut EventContext<'_>, event: &mut Event) {
+        event.map(|editor_event, meta| match editor_event {
+            EditorEvent::UpdateDuration(duration) => self.duration = *duration,
+        });
+    }
+}
 
 pub(crate) fn default_state() -> Arc<ViziaState> {
     ViziaState::new(|| (1200, 800))
@@ -44,7 +55,7 @@ pub(crate) fn create(
                     Graph::peak(
                         cx,
                         bus.clone(),
-                        10.0,
+                        Data::duration,
                         50.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
@@ -54,7 +65,7 @@ pub(crate) fn create(
                     Graph::rms(
                         cx,
                         bus.clone(),
-                        10.0,
+                        Data::duration,
                         250.0,
                         (-32.0, 8.0),
                         ValueScaling::Decibels,
@@ -214,11 +225,29 @@ pub(crate) fn create(
             .border_color(Color::rgb(48, 48, 48))
             .height(Pixels(200.0));
 
-            Label::new(
-                cx,
-                format!("Cyma {} - Visualizers Example", env!("CARGO_PKG_VERSION")).as_str(),
-            )
-            .color(Color::rgb(180, 180, 180));
+            HStack::new(cx, |cx| {
+                Label::new(
+                    cx,
+                    format!("Cyma {} - Visualizers Example", env!("CARGO_PKG_VERSION")).as_str(),
+                )
+                .color(Color::rgb(180, 180, 180))
+                .right(Pixels(16.0));
+
+                Label::new(cx, "Duration")
+                    .color(Color::rgb(180, 180, 180))
+                    .right(Pixels(4.0));
+                Slider::new(cx, Data::duration)
+                    .range(2.0..16.0)
+                    .step(2.0)
+                    .on_changing(|cx, value| cx.emit(EditorEvent::UpdateDuration(value)))
+                    .width(Pixels(120.0))
+                    .right(Pixels(4.0));
+                Label::new(cx, Data::duration.map(|d| format!("{:.2}s", d)))
+                    .color(Color::rgb(240, 240, 240));
+            })
+            .child_top(Stretch(1.))
+            .child_bottom(Stretch(1.))
+            .height(Pixels(16.0));
         })
         .background_color(Color::rgb(8, 8, 8))
         .child_space(Pixels(8.0))

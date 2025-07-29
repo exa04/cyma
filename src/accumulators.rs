@@ -7,6 +7,7 @@ pub trait Accumulator: Sync + Send {
     fn prev(&self) -> f32;
     fn set_sample_rate(&mut self, sample_rate: f32);
     fn set_size(&mut self, size: usize);
+    fn set_duration(&mut self, duration: f32);
 }
 
 #[inline]
@@ -100,6 +101,12 @@ impl Accumulator for PeakAccumulator {
         self.size = size;
         self.update();
     }
+
+    #[inline]
+    fn set_duration(&mut self, duration: f32) {
+        self.duration = duration;
+        self.update();
+    }
 }
 
 /// Stores the latest minimum.
@@ -183,6 +190,12 @@ impl Accumulator for MinimumAccumulator {
         self.size = size;
         self.update();
     }
+
+    #[inline]
+    fn set_duration(&mut self, duration: f32) {
+        self.duration = duration;
+        self.update();
+    }
 }
 
 /// Stores the latest root mean square value.
@@ -263,6 +276,12 @@ impl Accumulator for RMSAccumulator {
     #[inline]
     fn set_size(&mut self, size: usize) {
         self.size = size;
+        self.update();
+    }
+
+    #[inline]
+    fn set_duration(&mut self, duration: f32) {
+        self.duration = duration;
         self.update();
     }
 }

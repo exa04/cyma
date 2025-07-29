@@ -47,3 +47,7 @@ pub trait FillModifiers {
     /// Allows for the view to be filled from any desired level.
     fn fill_from_value(self, level: f32) -> Self;
 }
+
+pub trait DurationModifiers {
+    fn duration(self, duration: impl Res<f32>) -> Self;
+}

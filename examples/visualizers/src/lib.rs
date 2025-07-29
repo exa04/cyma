@@ -76,6 +76,7 @@ impl Plugin for VisualizersPlugin {
             self.bus.clone(),
             editor::Data {
                 spectrum: self.spectrum_output.clone(),
+                duration: 10.0,
             },
             self.stereo_bus.clone(),
             self.params.editor_state.clone(),
