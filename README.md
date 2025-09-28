@@ -2,21 +2,33 @@
   <img src="doc/logo.svg">
   <h1>CYMA</h1>
   
-  [Documentation] | [Book] | [Examples] | [Contributing]
-  
-  Composable views and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
-  
-  <a href="https://github.com/exa04/cyma/actions/workflows/test.yml"><img src="https://github.com/exa04/cyma/actions/workflows/test.yml/badge.svg"></a>
-  <a href="https://github.com/exa04/cyma/actions/workflows/docs.yml"><img src="https://github.com/exa04/cyma/actions/workflows/docs.yaml/badge.svg"></a>
-  <a href="https://deps.rs/repo/github/exa04/cyma"><img src="https://deps.rs/repo/github/exa04/cyma/status.svg"></a>
+  Composable visualizers and associated data structures for <a href="https://github.com/robbert-vdh/nih-plug">nih-plug</a> UIs made using <a href="https://github.com/vizia/vizia">VIZIA</a>.
 </div>
 
-[Documentation]: https://exa04.github.io/cyma
-[Book]: https://exa04.github.io/cyma/book
-[Examples]: ./examples/
-[Contributing]: CONTRIBUTING.md
-
 ---
+
+> [!IMPORTANT]
+>
+> **CYMA is now on [sourcehut](https://sr.ht/~voidstar-audio/CYMA/).**
+> Active development of CYMA will no longer happen on GitHub.
+>
+> **This repository, in its current state, will stay up indefinitely.** If your codebase uses CYMA, you don't need to change anything, things will just keep working.
+> However, if you want future versions of CYMA, go to your Cargo.toml file and change CYMA's URL to the sourcehut repo.
+>
+> ```diff
+> - cyma = { git = "https://github.com/exa04/cyma" }
+> + cyma = { git = "https://git.sr.ht/~voidstar-audio/CYMA" }
+> ```
+> 
+> I will not reply to Issues and PRs on GitHub anymore, or use this account at all, really.
+>
+> — exa
+
+<details>
+
+<summary>
+  Original Readme
+</summary>
 
 ## ✨ Overview
 
@@ -200,3 +212,5 @@ If you want to contribute through issues and code contributions, read the
 ## 📃 License
 
 This project is licensed under the [MPL](LICENSE).
+
+</details>
